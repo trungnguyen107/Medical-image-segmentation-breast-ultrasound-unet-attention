@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SonoSeg · Phân đoạn khối u siêu âm vú</title>
+<meta name="description" content="Phân đoạn khối u trên ảnh siêu âm vú bằng U-Net kết hợp cơ chế Attention.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b76d1'/%3E%3Cpath d='M8 21c3-8 13-8 16 0' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='19' r='3.2' fill='white'/%3E%3C/svg%3E">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3.5"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v13c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-13M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 18.5A1.6 1.6 0 0 0 6 21h12a1.6 1.6 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></symbol>
+  <symbol id="i-net" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 7 3.4 3.7M7 17l3.4-3.7M13.6 10.3 17 7M13.6 13.7 17 17"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3M7 14h10v7H7z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3"/><circle cx="15.5" cy="15.5" r="1.3"/><circle cx="15.5" cy="8.5" r="1.3"/><circle cx="8.5" cy="15.5" r="1.3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="7" width="4" height="10" rx="1.2"/><rect x="16" y="4" width="5" height="16" rx="1.5"/><path d="M8 12h2M14 12h2"/></symbol>
+  <symbol id="i-toggle" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="16.5" cy="12" r="3"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="nav" id="nav">
+    <a class="brand" href="#dash" aria-label="SonoSeg – trang tổng quan">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 21c3-9 15-9 18 0" /><circle cx="16" cy="19" r="3.4"/></svg></span>
+      <span><b>SonoSeg</b><small>U-Net + Attention</small></span>
+    </a>
+    <nav>
+      <div class="nav-h">Mô hình đề xuất</div>
+      <a href="#dash" data-page="dash"><svg><use href="#i-home"/></svg><span>Tổng quan</span></a>
+      <a href="#anatomy" data-page="anatomy"><svg><use href="#i-layers"/></svg><span>Bên trong M4</span><em class="new">M4</em></a>
+      <a href="#ablation" data-page="ablation"><svg><use href="#i-toggle"/></svg><span>Ablation</span></a>
+      <div class="nav-h">Làm việc</div>
+      <a href="#seg" data-page="seg"><svg><use href="#i-scan"/></svg><span>Phân đoạn</span></a>
+      <a href="#batch" data-page="batch"><svg><use href="#i-stack"/></svg><span>Xử lý hàng loạt</span></a>
+      <a href="#history" data-page="history"><svg><use href="#i-clock"/></svg><span>Lịch sử ca</span><em id="navCases"></em></a>
+      <div class="nav-h">Dữ liệu &amp; huấn luyện</div>
+      <a href="#data" data-page="data"><svg><use href="#i-db"/></svg><span>Cơ sở dữ liệu ảnh</span></a>
+      <a href="#train" data-page="train"><svg><use href="#i-cpu"/></svg><span>Huấn luyện</span><em id="navTrain" hidden>●</em></a>
+      <a href="#eval" data-page="eval"><svg><use href="#i-chart"/></svg><span>Đánh giá &amp; so sánh</span></a>
+      <div class="nav-h">Đồ án</div>
+      <a href="#exp" data-page="exp"><svg><use href="#i-flask"/></svg><span>Kết quả thực nghiệm</span></a>
+      <a href="#model" data-page="model"><svg><use href="#i-net"/></svg><span>Mô hình &amp; phương pháp</span></a>
+    </nav>
+    <div class="nav-foot">
+      <div class="srv" id="srv"><i></i><span>Đang kết nối…</span></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu" id="menuBtn" aria-label="Mở menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="tb-title"><h1 id="pageTitle">Tổng quan</h1><p id="pageSub"></p></div>
+      <div class="tb-actions">
+        <span class="badge warn" title="Công cụ nghiên cứu: mô hình học trên ảnh mô phỏng và 42 ảnh thật STU-Hospital">Công cụ nghiên cứu · không dùng chẩn đoán</span>
+        <button class="icon-btn" id="themeQuick" aria-label="Đổi giao diện sáng/tối"><svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg></button>
+      </div>
+    </header>
+
+    <!-- ===================== TỔNG QUAN ===================== -->
+    <section class="page" id="p-dash">
+      <div class="hero card">
+        <div class="hero-txt">
+          <span class="eyebrow">Mô hình đề xuất M4</span>
+          <h2>Phân đoạn khối u trên ảnh siêu âm vú</h2>
+          <p>U-Net kết hợp Attention Gate, CBAM và giám sát sâu. Chạy hoàn toàn trên máy, không cần GPU.</p>
+          <div class="row gap">
+            <button class="btn primary lg" data-go="seg" data-demo="1"><svg><use href="#i-sparkle"/></svg>Chạy thử ngay</button>
+            <button class="btn lg" data-go="anatomy"><svg><use href="#i-layers"/></svg>Xem bên trong M4</button>
+          </div>
+        </div>
+        <div class="hero-art" id="heroArt" aria-hidden="true">
+          <figure><div class="ha-img skeleton" id="ha0"></div><figcaption>Ảnh siêu âm</figcaption></figure>
+          <figure><div class="ha-img skeleton" id="ha1"></div><figcaption>Attention</figcaption></figure>
+          <figure><div class="ha-img skeleton" id="ha2"></div><figcaption id="ha2c">Kết quả</figcaption></figure>
+        </div>
+      </div>
+      <div class="stats" id="dashKpi"></div>
+      <div class="go3">
+        <a class="go-card" data-go="seg"><span class="gi-ic"><svg><use href="#i-scan"/></svg></span><div><b>Phân đoạn ảnh</b><span>Tải ảnh hoặc chọn từ CSDL – nhận kích thước, vị trí, độ tin cậy và phiếu kết quả.</span></div><svg class="arr"><use href="#i-arrow"/></svg></a>
+        <a class="go-card" data-go="anatomy"><span class="gi-ic"><svg><use href="#i-layers"/></svg></span><div><b>Bên trong M4</b><span>Theo dõi ảnh đi qua CBAM, Attention Gate và các đầu ra giám sát sâu.</span></div><svg class="arr"><use href="#i-arrow"/></svg></a>
+        <a class="go-card" data-go="ablation"><span class="gi-ic"><svg><use href="#i-toggle"/></svg></span><div><b>Đo đóng góp</b><span>Bật/tắt từng thành phần của M4 và xem Dice thay đổi ra sao.</span></div><svg class="arr"><use href="#i-arrow"/></svg></a>
+      </div>
+      <div class="grid dash2">
+        <div class="card"><div class="card-h"><h3>So sánh nhanh 4 mô hình</h3><a class="link" data-go="eval">Chi tiết</a></div><div id="dashModels"></div></div>
+        <div class="card"><div class="card-h"><h3>Ca gần đây</h3><a class="link" data-go="history">Tất cả</a></div><div id="dashRecent" class="recent list"></div></div>
+      </div>
+    </section>
+
+    <!-- ===================== BÊN TRONG M4 ===================== -->
+    <section class="page" id="p-anatomy">
+      <div class="card an-top">
+        <div class="an-pick">
+          <div class="card-h"><h3>Ảnh đầu vào</h3><span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="an"><button class="on" data-split="test">Mô phỏng</button><button data-split="real">Ảnh thật</button></span><button class="btn sm" id="anMore">Ảnh khác</button><label class="btn sm"><svg><use href="#i-upload"/></svg>Tải ảnh<input type="file" id="anFile" accept="image/*" hidden></label></span></div>
+          <div class="strip" id="anStrip"></div>
+          <div class="strip-legend"><span><i class="kd-benign"></i>Lành tính</span><span><i class="kd-malignant"></i>Ác tính</span><span><i class="kd-real"></i>Ảnh thật</span><span class="muted">Mô phỏng: tập kiểm tra. Ảnh thật: 42 ảnh siêu âm STU-Hospital (Zhuang et al., 2019), đều có mặt nạ chuẩn của bác sĩ.</span></div>
+        </div>
+        <div class="an-ctl">
+          <label class="fld"><span>Mô hình</span><select class="sel" id="anModel"></select></label>
+          <div class="an-flags" id="anFlags"></div>
+          <button class="btn primary block" id="anRun"><svg><use href="#i-play"/></svg>Chạy qua mô hình</button>
+        </div>
+      </div>
+      <ol class="pipe-x" id="anPipe">
+        <li data-sec="enc"><b>1</b>Bộ mã hóa</li>
+        <li data-sec="cbam"><b>2</b>Tầng đáy + CBAM</li>
+        <li data-sec="gate"><b>3</b>Attention Gate</li>
+        <li data-sec="ds"><b>4</b>Giải mã + giám sát sâu</li>
+        <li data-sec="out"><b>5</b>Kết quả</li>
+      </ol>
+      <div id="anBody"><div class="card"><div class="empty"><svg><use href="#i-layers"/></svg><b>Chọn một ảnh để xem bên trong mô hình</b><span>Mỗi bước của M4 được hiện ra: đặc trưng, chú ý kênh – không gian, cổng chú ý và các đầu ra giám sát sâu.</span></div></div></div>
+    </section>
+
+    <!-- ===================== ABLATION ===================== -->
+    <section class="page" id="p-ablation">
+      <div class="grid ab-head">
+        <div class="card">
+          <div class="card-h"><h3>Bật / tắt thành phần</h3><span class="muted sm">M4 = cả ba thành phần</span></div>
+          <div class="ab-sw" id="abSw">
+            <label class="ab-t"><input type="checkbox" data-f="ag" checked><i></i><div><b>Attention Gate</b><span>Lọc kết nối tắt theo tín hiệu từ tầng sâu</span></div></label>
+            <label class="ab-t"><input type="checkbox" data-f="cbam" checked><i></i><div><b>CBAM tầng đáy</b><span>Chú ý kênh rồi không gian ở tầng sâu nhất</span></div></label>
+            <label class="ab-t"><input type="checkbox" data-f="ds" checked><i></i><div><b>Giám sát sâu</b><span>Đầu ra phụ ở 3 tầng giải mã khi huấn luyện</span></div></label>
+          </div>
+        </div>
+        <div class="card ab-sel" id="abSel"></div>
+      </div>
+      <div class="card" id="abSum"></div>
+      <div class="grid ab-mid">
+        <div class="card">
+          <div class="card-h"><h3>Ma trận ablation 2×2×2</h3><span class="muted sm">Bấm một hàng để chọn</span></div>
+          <div class="tbl-wrap"><table class="tbl" id="abTbl"></table></div>
+          <p class="note-s" id="abNote"></p>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Dice theo tổ hợp</h3><span class="muted sm">Tập kiểm tra (A) và thiết bị khác (B)</span></div>
+          <div id="abChart" class="chart"></div>
+          <p class="note-s">Mỗi chấm là Dice trung bình trên các ảnh có khối u. Trục không bắt đầu từ 0 để thấy rõ chênh lệch; con số chính xác nằm trong bảng.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Thử trên một ảnh</h3>
+          <span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="ab"><button class="on" data-split="test">Mô phỏng</button><button data-split="real">Ảnh thật</button></span><label class="fld inline"><span>So với</span><select class="sel sm" id="abRef"></select></label><button class="btn sm" id="abMore">Ảnh khác</button></span></div>
+        <div class="strip" id="abStrip"></div>
+        <div class="strip-legend"><span><i class="kd-benign"></i>Lành tính</span><span><i class="kd-malignant"></i>Ác tính</span><span class="muted">Bấm một ô kết quả để chọn tổ hợp; bản đồ bên phải so sánh nó với mô hình ở ô “So với”.</span></div>
+        <div id="abImg"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PHÂN ĐOẠN ===================== -->
+    <section class="page" id="p-seg">
+      <div class="seg-layout">
+        <div class="seg-left">
+          <div class="card">
+            <div class="card-h"><h3>Ảnh đầu vào</h3></div>
+            <div class="tabs-s" role="tablist" id="srcTabs">
+              <button class="on" data-src="upload">Tải lên</button><button data-src="db">Từ CSDL</button><button data-src="sim">Mô phỏng</button>
+            </div>
+            <div class="src" data-src="upload">
+              <label class="drop" id="drop" tabindex="0">
+                <input type="file" id="file" accept="image/png,image/jpeg,image/bmp" hidden>
+                <svg><use href="#i-upload"/></svg>
+                <b>Kéo thả ảnh siêu âm</b><small>hoặc bấm để chọn · PNG, JPG, BMP</small>
+              </label>
+              <label class="file-line"><svg><use href="#i-image"/></svg><span id="gtName">Mặt nạ chuẩn (tùy chọn)</span><input type="file" id="gtFile" accept="image/png,image/jpeg,image/bmp" hidden><em>Chọn</em></label>
+            </div>
+            <div class="src" data-src="db" hidden>
+              <div class="row gap sm-gap"><select id="pickSplit" class="sel sm"><option value="test">Tập kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="val">Kiểm định</option><option value="train">Huấn luyện</option><option value="upload">Ảnh tải lên</option></select>
+                <select id="pickKind" class="sel sm"><option value="">Mọi loại</option><option value="benign">Lành tính</option><option value="malignant">Ác tính</option><option value="normal">Bình thường</option></select></div>
+              <div class="pick-grid" id="pickGrid"></div>
+            </div>
+            <div class="src" data-src="sim" hidden>
+              <p class="muted sm">Sinh ngẫu nhiên một ảnh mô phỏng kèm mặt nạ chuẩn.</p>
+              <div class="seg-btns"><button class="btn" data-sim="benign">Lành tính</button><button class="btn" data-sim="malignant">Ác tính</button><button class="btn" data-sim="normal">Bình thường</button></div>
+              <div class="switch-row"><span>Thiết bị khác (miền B)</span><label class="switch"><input type="checkbox" id="simB"><i></i></label></div>
+            </div>
+            <div class="cur" id="cur" hidden><img id="curImg" alt=""><div><b id="curName"></b><span id="curMeta"></span></div><button class="icon-btn sm" id="curClear" title="Bỏ ảnh"><svg><use href="#i-x"/></svg></button></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Thiết lập</h3></div>
+            <label class="fld">Mô hình<select id="model" class="sel"></select><small id="modelDesc" class="muted"></small></label>
+            <label class="fld">Ngưỡng nhị phân hóa <output id="thrv">0,50</output><input type="range" id="thr" min="0.1" max="0.9" step="0.05" value="0.5"></label>
+            <div class="switch-row"><span>Chỉ giữ vùng liên thông lớn nhất</span><label class="switch"><input type="checkbox" id="post" checked><i></i></label></div>
+            <div class="switch-row"><span>Lưu ca vào lịch sử</span><label class="switch"><input type="checkbox" id="save" checked><i></i></label></div>
+            <label class="fld">Kích thước điểm ảnh <span class="muted">(mm/px, tùy chọn)</span><input type="text" id="pxmm" class="inp" inputmode="decimal" placeholder="ví dụ 0,1"></label>
+            <button class="btn primary block lg" id="run" disabled><svg><use href="#i-play"/></svg>Phân đoạn<kbd>Enter</kbd></button>
+          </div>
+        </div>
+
+        <div class="seg-main">
+        <div class="seg-center">
+          <div class="card viewer-card">
+            <div class="vt">
+              <div class="seg-ctl" id="layerCtl" role="tablist">
+                <button data-layer="overlay" class="on">Lớp phủ</button><button data-layer="image">Gốc</button><button data-layer="mask">Mặt nạ</button>
+                <button data-layer="prob">Xác suất</button><button data-layer="unc" title="Những điểm ảnh mô hình lưỡng lự (xác suất gần 0,5)">Độ không chắc</button><button data-layer="att">Attention</button><button data-layer="split">Trước/sau</button>
+              </div>
+              <div class="vt-r">
+                <label class="mini-chk"><input type="checkbox" id="showGt" checked> Viền chuẩn</label>
+                <button class="icon-btn sm" id="zoomBtn" title="Toàn màn hình"><svg><use href="#i-expand"/></svg></button>
+              </div>
+            </div>
+            <div class="stage" id="stage">
+              <canvas id="cv"></canvas>
+              <div class="split-handle" id="splitH" hidden><span></span></div>
+              <div class="empty-stage" id="emptyStage"><svg><use href="#i-scan"/></svg><b>Chưa có ảnh</b><span>Tải ảnh, chọn từ CSDL hoặc tạo ảnh mô phỏng ở bên trái</span><button class="btn primary" id="quickDemo"><svg><use href="#i-sparkle"/></svg>Dùng ảnh mẫu</button></div>
+              <div class="loading" id="stageLoad" hidden><i></i></div>
+            </div>
+            <div class="vb">
+              <div class="gates" id="gates" hidden></div>
+              <label class="op">Độ đậm lớp phủ <input type="range" id="op" min="0" max="90" step="5" value="45"><output id="opv">45%</output></label>
+              <div class="legend-s"><span><i class="lg-pred"></i>Dự đoán</span><span><i class="lg-gt"></i>Mặt nạ chuẩn</span></div>
+            </div>
+          </div>
+          <div class="card seg-tools">
+            <div class="tabs-s wide" id="toolTabs"><button class="on" data-tool="cmp">So sánh các mô hình</button><button data-tool="rob">Thử độ bền với nhiễu</button></div>
+            <div class="tool" data-tool="cmp">
+              <div class="row between"><p class="muted sm">Chạy tất cả mô hình trên ảnh hiện tại, tô bản đồ đồng thuận.</p><button class="btn" id="cmpRun" disabled><svg><use href="#i-play"/></svg>So sánh</button></div>
+              <div class="cmp-grid" id="cmpGrid"></div>
+              <div class="grid g2" id="cmpMore" hidden><div><h4>Bản đồ đồng thuận</h4><img id="consImg" class="cons" alt="Bản đồ đồng thuận"><p class="sm muted" id="consTxt"></p></div><div><h4 id="cmpChartT">Dice theo mô hình</h4><div id="cmpChart" class="chart"></div></div></div>
+            </div>
+            <div class="tool" data-tool="rob" hidden>
+              <div class="row gap wrap">
+                <div class="seg-ctl" id="robKind"><button class="on" data-kind="speckle">Nhiễu đốm</button><button data-kind="gauss">Nhiễu Gauss</button><button data-kind="contrast">Giảm tương phản</button></div>
+                <label class="fld inline">Mức <output id="robLv">σ = 0,20</output><input type="range" id="robLevel" min="0" max="4" step="1" value="2"></label>
+                <button class="btn" id="robRun" disabled>Áp dụng</button><button class="btn" id="robSweep" disabled>Quét 5 mức</button>
+              </div>
+              <div class="cmp-grid five" id="robGrid"></div>
+              <div id="robChart" class="chart"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seg-right">
+          <div class="card result-card">
+            <div class="card-h"><h3>Kết quả</h3><span class="muted sm" id="runInfo"></span></div>
+            <div id="resBox"><div class="empty"><svg><use href="#i-dice"/></svg><p>Chỉ số sẽ hiện ở đây sau khi phân đoạn. Khi ảnh có mặt nạ chuẩn, hệ thống tính thêm Dice, IoU, Precision, Recall và HD95.</p></div></div>
+            <div class="res-actions" id="resAct" hidden>
+              <button class="btn sm" id="dlMask"><svg><use href="#i-download"/></svg>Mặt nạ</button>
+              <button class="btn sm" id="dlOver"><svg><use href="#i-download"/></svg>Lớp phủ</button>
+              <button class="btn sm" id="dlCsv"><svg><use href="#i-download"/></svg>CSV</button>
+              <button class="btn sm primary-soft" id="print"><svg><use href="#i-print"/></svg>Phiếu kết quả</button>
+            </div>
+          </div>
+        </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== HÀNG LOẠT ===================== -->
+    <section class="page" id="p-batch">
+      <div class="grid g-side">
+        <div class="card">
+          <div class="card-h"><h3>Tệp đầu vào</h3></div>
+          <label class="drop tall" id="bdrop" tabindex="0"><input type="file" id="bfiles" accept="image/png,image/jpeg,image/bmp" multiple hidden>
+            <svg><use href="#i-upload"/></svg><b>Chọn hoặc kéo thả nhiều ảnh</b><small>Tối đa 100 ảnh. Mặt nạ chuẩn đặt cùng tên, thêm hậu tố <code>_mask</code> như bộ BUSI.</small></label>
+          <p class="muted sm" id="bInfo">Chưa chọn tệp.</p>
+          <label class="fld">Mô hình<select id="bModel" class="sel"></select></label>
+          <div class="row gap"><button class="btn" id="bDemo"><svg><use href="#i-db"/></svg>Lấy 24 ảnh từ CSDL</button><button class="btn primary" id="bRun" disabled><svg><use href="#i-play"/></svg>Chạy</button></div>
+          <div class="progress" id="bProg" hidden><i></i></div>
+        </div>
+        <div>
+          <div class="kpis" id="bKpi"></div>
+          <div class="grid g2" id="bCharts" hidden><div class="card"><div class="card-h"><h3>Phân bố Dice</h3></div><div id="bHist" class="chart"></div></div><div class="card"><div class="card-h"><h3>Phân bố diện tích khối u (% ảnh)</h3></div><div id="bArea" class="chart"></div></div></div>
+          <div class="card" id="bRes" hidden><div class="card-h"><h3>Kết quả từng ảnh</h3><a class="btn sm" id="bZip"><svg><use href="#i-download"/></svg>Tải ZIP</a></div><div class="tbl-wrap"><table class="tbl" id="bTbl"></table></div></div>
+          <div class="card empty-card" id="bEmpty"><div class="empty"><svg><use href="#i-stack"/></svg><p>Chọn ảnh hoặc lấy ảnh từ CSDL rồi bấm <b>Chạy</b>. Kết quả gồm bảng chỉ số, biểu đồ phân bố và tệp ZIP (mặt nạ, lớp phủ, CSV).</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LỊCH SỬ ===================== -->
+    <section class="page" id="p-history">
+      <div class="kpis" id="hKpi"></div>
+      <div class="grid g2"><div class="card"><div class="card-h"><h3>Số ca theo mô hình</h3></div><div id="hByModel" class="chart"></div></div><div class="card"><div class="card-h"><h3>Dice của các ca có mặt nạ chuẩn</h3></div><div id="hDice" class="chart"></div></div></div>
+      <div class="card">
+        <div class="card-h"><h3>Danh sách ca</h3>
+          <div class="row gap sm-gap"><input class="inp sm" id="hQ" placeholder="Tìm theo tên ảnh…"><select class="sel sm" id="hModel"><option value="">Mọi mô hình</option></select>
+            <a class="btn sm" href="/api/cases.csv"><svg><use href="#i-download"/></svg>CSV</a><button class="btn sm danger" id="hClear"><svg><use href="#i-trash"/></svg>Xóa hết</button></div></div>
+        <div class="tbl-wrap"><table class="tbl" id="hTbl"></table></div>
+        <div class="pager" id="hPager"></div>
+      </div>
+    </section>
+
+    <!-- ===================== CSDL ===================== -->
+    <section class="page" id="p-data">
+      <div class="kpis" id="dKpi"></div>
+      <div class="grid g3">
+        <div class="card"><div class="card-h"><h3>Theo loại tổn thương</h3></div><div id="dDonut"></div></div>
+        <div class="card span2"><div class="card-h"><h3>Số ảnh theo tập và loại</h3></div><div id="dBars" class="chart"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Thư viện ảnh</h3>
+          <div class="row gap sm-gap wrap">
+            <select class="sel sm" id="fSplit"><option value="">Mọi tập</option><option value="train">Huấn luyện</option><option value="val">Kiểm định</option><option value="test">Kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="upload">Tải lên</option></select>
+            <select class="sel sm" id="fKind"><option value="">Mọi loại</option><option value="benign">Lành tính</option><option value="malignant">Ác tính</option><option value="normal">Bình thường</option><option value="unknown">Chưa rõ</option></select>
+            <label class="mini-chk"><input type="checkbox" id="fMask" checked> Hiện mặt nạ</label>
+            <button class="btn sm primary" id="upOpen"><svg><use href="#i-upload"/></svg>Thêm ảnh</button>
+          </div></div>
+        <div class="gallery" id="gallery"></div>
+        <div class="pager" id="gPager"></div>
+      </div>
+    </section>
+
+    <!-- ===================== HUẤN LUYỆN ===================== -->
+    <section class="page" id="p-train">
+      <div class="grid g-side">
+        <div class="card">
+          <div class="card-h"><h3>Cấu hình</h3></div>
+          <div class="arch" id="arch"></div>
+          <div class="grid g2 tight">
+            <label class="fld">Số epoch <output id="epv">12</output><input type="range" id="tEpochs" min="1" max="60" value="12"></label>
+            <label class="fld">Số ảnh huấn luyện <output id="ntv">240</output><input type="range" id="tN" min="24" max="240" step="24" value="240"></label>
+            <label class="fld">Tốc độ học<select id="tLr" class="sel"><option value="0.003">3·10⁻³</option><option value="0.001" selected>1·10⁻³</option><option value="0.0003">3·10⁻⁴</option><option value="0.0001">1·10⁻⁴</option></select></label>
+            <label class="fld">Batch<select id="tBs" class="sel"><option>8</option><option selected>16</option><option>32</option></select></label>
+            <label class="fld">Kích thước ảnh<select id="tSize" class="sel"><option value="64">64×64</option><option value="96" selected>96×96</option><option value="128">128×128</option></select></label>
+            <label class="fld">Kênh cơ sở<select id="tBase" class="sel"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option></select></label>
+          </div>
+          <div class="switch-row"><span>Tăng cường dữ liệu (lật, xoay, độ sáng, nhiễu)</span><label class="switch"><input type="checkbox" id="tAug" checked><i></i></label></div>
+          <label class="fld">Tên lần chạy<input class="inp" id="tName" placeholder="tự đặt nếu để trống"></label>
+          <p class="muted sm" id="tEta"></p>
+          <div class="row gap"><button class="btn primary lg grow" id="tStart"><svg><use href="#i-play"/></svg>Bắt đầu huấn luyện</button><button class="btn lg danger" id="tStop" disabled><svg><use href="#i-stop"/></svg>Dừng</button></div>
+        </div>
+        <div>
+          <div class="card live" id="live">
+            <div class="card-h"><h3>Theo dõi trực tiếp</h3><span class="chip" id="tStatus">Chưa chạy</span></div>
+            <div class="prog-big"><div class="pb"><i id="tBar"></i></div><div class="pb-meta"><b id="tPct">0%</b><span id="tMsg">Chọn cấu hình rồi bấm “Bắt đầu huấn luyện”.</span></div></div>
+            <div class="kpis small" id="tKpi"></div>
+            <div class="grid g2"><div><h4>Hàm mất mát (train)</h4><div id="tLoss" class="chart"></div></div><div><h4>Dice kiểm định</h4><div id="tDice" class="chart"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Các lần huấn luyện</h3><span class="muted sm">Mô hình huấn luyện xong tự xuất hiện trong danh sách chọn mô hình</span></div>
+            <div class="tbl-wrap"><table class="tbl" id="runTbl"></table></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ĐÁNH GIÁ ===================== -->
+    <section class="page" id="p-eval">
+      <div class="card">
+        <div class="card-h"><h3>Chọn mô hình để so sánh</h3>
+          <div class="row gap sm-gap"><select id="eSplit" class="sel sm"><option value="test">Tập kiểm tra – miền A (80 ảnh)</option><option value="ext">Thiết bị khác – miền B (60 ảnh)</option><option value="real">Ảnh siêu âm thật – STU (42 ảnh)</option></select>
+            <button class="btn sm primary" id="eRun"><svg><use href="#i-play"/></svg>Đánh giá lại</button></div></div>
+        <div class="chips" id="eModels"></div>
+      </div>
+      <div class="card"><div class="card-h"><h3>Bảng so sánh</h3><span class="muted sm" id="eNote"></span></div><div class="tbl-wrap"><table class="tbl" id="eTbl"></table></div></div>
+      <div class="grid g2">
+        <div class="card"><div class="card-h"><h3>Dice: cùng thiết bị và thiết bị khác</h3><span class="muted sm">trung bình trên ảnh có khối u</span></div><div id="eDomain" class="chart"></div>
+          <p class="muted sm note-s">Khoảng cách giữa hai chấm cho biết mô hình giảm bao nhiêu khi gặp ảnh từ thiết bị khác – càng ngắn, khả năng khái quát càng tốt.</p></div>
+        <div class="card"><div class="card-h"><h3>Phân bố Dice từng ảnh</h3><span class="muted sm" id="eBoxSub"></span></div><div id="eBox" class="chart"></div>
+          <p class="muted sm note-s">Hộp: 50% ảnh ở giữa; vạch đậm: trung vị; râu: 5–95%. Các chấm rời phía dưới là ca khó.</p></div>
+        <div class="card"><div class="card-h"><h3>Dice theo loại tổn thương</h3><span class="muted sm" id="eKindSub"></span></div><div id="eKind" class="chart"></div>
+          <p class="muted sm note-s">Khối u ác tính có bờ không đều nên thường khó phân đoạn hơn khối lành tính.</p></div>
+        <div class="card"><div class="card-h"><h3>Độ bền với nhiễu</h3>
+          <div class="row gap sm-gap"><select id="eRobKind" class="sel sm"><option value="speckle">Nhiễu đốm</option><option value="gauss">Nhiễu Gauss</option><option value="contrast">Giảm tương phản</option></select><button class="btn sm" id="eRob"><svg><use href="#i-play"/></svg>Chạy</button></div></div>
+          <div id="eRobChart" class="chart"><div class="empty sm"><svg><use href="#i-chart"/></svg><p>Đo Dice của các mô hình đã chọn trên 40 ảnh kiểm tra ở 5 mức nhiễu (mất vài giây).</p></div></div></div>
+      </div>
+      <div class="card"><div class="card-h"><h3>Đường cong huấn luyện (Dice kiểm định)</h3></div><div id="eCurves" class="chart"></div></div>
+    </section>
+
+    <!-- ===================== THỰC NGHIỆM ===================== -->
+    <section class="page" id="p-exp"><div id="expBox"></div></section>
+
+    <!-- ===================== MÔ HÌNH ===================== -->
+    <section class="page" id="p-model"><div id="modelBox"></div></section>
+  </div>
+</div>
+
+<!-- modal & thông báo -->
+<div class="modal" id="modal" hidden><div class="modal-box"><button class="icon-btn close" data-close aria-label="Đóng"><svg><use href="#i-x"/></svg></button><div id="modalBody"></div></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="report" class="report"></div>
+
+<script src="/static/charts.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

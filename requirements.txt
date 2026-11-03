@@ -1,0 +1,9 @@
+torch>=2.2
+numpy
+scipy
+opencv-python-headless
+albumentations>=1.4
+flask
+matplotlib
+pillow
+pytest            # chỉ cần để chạy kiểm thử
