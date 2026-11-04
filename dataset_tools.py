@@ -83,9 +83,25 @@ def fetch_stu(log=print):
     hosp = os.path.join(STU_DIR, "Hospital")
     if os.path.isdir(hosp) and glob.glob(os.path.join(hosp, "Test_Image_*.png")):
         return hosp
-    import io, urllib.request, zipfile
+    import io, shutil as sh, subprocess, tempfile, urllib.request, zipfile
     log("Đang tải STU-Hospital từ GitHub…")
-    data = urllib.request.urlopen(STU_URL, timeout=60).read()
+    if sh.which("git"):                         # cách 1: git clone (nhanh, đi qua proxy của git)
+        tmp = tempfile.mkdtemp()
+        try:
+            subprocess.run(["git", "clone", "-q", "--depth", "1", "https://github.com/xbhlk/STU-Hospital.git", tmp],
+                           check=True, timeout=180, capture_output=True)
+            src = os.path.join(tmp, "Hospital")
+            if os.path.isdir(src):
+                os.makedirs(hosp, exist_ok=True)
+                for f in glob.glob(os.path.join(src, "*.png")):
+                    shutil.copy(f, hosp)
+                return hosp
+        except Exception as e:  # noqa: BLE001
+            log(f"git clone không được ({e}); thử tải tệp ZIP…")
+        finally:
+            sh.rmtree(tmp, ignore_errors=True)
+    req = urllib.request.Request(STU_URL, headers={"User-Agent": "SonoSeg"})   # cách 2: tải ZIP
+    data = urllib.request.urlopen(req, timeout=60).read()
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         for n in z.namelist():
             if "/Hospital/" in n and n.lower().endswith(".png"):
