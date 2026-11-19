@@ -286,3 +286,34 @@ def progress(target=None):
     return dict(target=target, total=total, with_mask=masked, missing=max(0, target - masked), pct=round(100 * masked / target, 1) if target else None,
                 by_kind=by_kind, by_split=dict(by_split), datasets=ds, registry=REGISTRY,
                 synthetic=db.q("SELECT COUNT(*) n FROM images WHERE dataset='sample'", one=True)["n"])
+
+
+# ---------------------------------------------------------------- nguồn ảnh -------------------------------
+LINKS = {
+    "busi": "https://doi.org/10.1016/j.dib.2019.104863", "busbra": "https://doi.org/10.1002/mp.16812",
+    "uclm": "https://data.mendeley.com/datasets/7fvgj4jsp7", "breast": "https://doi.org/10.1038/s41597-024-02984-z",
+    "stu": "https://github.com/xbhlk/STU-Hospital", "udiat": "https://doi.org/10.1109/JBHI.2017.2731873",
+}
+
+
+def export_sources(out_md="SOURCES.md", out_csv=os.path.join("data", "sources.csv")):
+    """Ghi SOURCES.md (bảng nguồn + giấy phép + số ảnh đã dùng) và data/sources.csv (từng ảnh → bộ, bệnh nhân, loại, tập).
+    Dùng để ghi nguồn ảnh vào báo cáo. Các số trong bảng là số ảnh THỰC SỰ đã nhập sau khi loại trùng."""
+    p = progress(); root = os.path.dirname(os.path.abspath(__file__))
+    lines = ["# Nguồn ảnh siêu âm thật đã dùng", "",
+             f"Tạo lúc {db.now()} · {p['with_mask']} ảnh có mặt nạ · bình thường {p['by_kind']['normal']} / lành tính {p['by_kind']['benign']} / ác tính {p['by_kind']['malignant']}.", "",
+             "| Bộ dữ liệu | Số ảnh đã dùng | Bình thường / Lành / Ác | Giấy phép | Trích dẫn | Liên kết |", "|---|---|---|---|---|---|"]
+    for d in p["datasets"]:
+        k = d["by_kind"]
+        lines.append(f"| {d['name']} | {d['n']} | {k['normal']} / {k['benign']} / {k['malignant']} | {d['license']} | {d['cite']} | {LINKS.get(d['dataset'], '')} |")
+    lines += ["", "Ảnh trùng lặp đã bị loại; ảnh của cùng một bệnh nhân luôn nằm cùng một tập. Hãy tuân thủ giấy phép và yêu cầu trích dẫn của từng bộ.", ""]
+    with open(os.path.join(root, out_md), "w", encoding="utf8") as fh:
+        fh.write("\n".join(lines))
+    rows = db.q(f"SELECT dataset, filename, kind, split, patient, license, width, height FROM images WHERE {REAL_SQL} ORDER BY dataset, id")
+    cp = os.path.join(root, out_csv); os.makedirs(os.path.dirname(cp), exist_ok=True)
+    with open(cp, "w", encoding="utf-8-sig", newline="") as fh:
+        w = csv.writer(fh); w.writerow(["dataset", "file", "class", "split", "patient", "license", "width", "height", "citation"])
+        for r in rows:
+            w.writerow([r["dataset"], os.path.basename(r["filename"]), r["kind"], r["split"], r["patient"] or "", r["license"] or "",
+                        r["width"], r["height"], REGISTRY.get(r["dataset"], {}).get("cite", "")])
+    return len(rows)

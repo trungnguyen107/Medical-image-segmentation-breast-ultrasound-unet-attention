@@ -7,6 +7,8 @@
   python manage.py import-real <bộ> <thư mục> [--manifest tệp.csv] [--holdout] [--default-label benign|malignant|normal]
                                         # nhập ảnh siêu âm THẬT: loại trùng, chia theo bệnh nhân, ghi giấy phép
   python manage.py progress             # số ảnh thật đã có so với mục tiêu 10.000
+  python manage.py sources              # ghi SOURCES.md + data/sources.csv (nguồn từng ảnh) để đưa vào báo cáo
+  python manage.py train-real --models M1,M4 --epochs 30   # huấn luyện U-Net và U-Net+Attention trên ảnh thật, so sánh ΔDice
   python manage.py dedup                # liệt kê cặp ảnh gần trùng giữa các bộ
   python manage.py stats                # thống kê CSDL
 """
@@ -39,6 +41,12 @@ def main(argv):
         print("  theo loại:", p["by_kind"], "| theo tập:", p["by_split"])
         for d in p["datasets"]:
             print(f"  {d['dataset']:10s} {d['n']:6d} ảnh ({d['with_mask']} mặt nạ) · {d['license']} · {d['cite']}")
+    elif cmd == "sources":
+        import real_data
+        print(real_data.export_sources(), "ảnh đã ghi vào SOURCES.md và data/sources.csv")
+    elif cmd == "train-real":
+        import real_train
+        real_train.main(argv[2:])
     elif cmd == "dedup":
         import real_data
         pr = real_data.dedup_report()

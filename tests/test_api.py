@@ -161,7 +161,7 @@ def test_real_progress_and_origin_filter(client):
     for kind in ("normal", "benign", "malignant"):
         os.makedirs(f"{root}/{kind}", exist_ok=True)
         for i in range(4):
-            img, m, _ = D.make_sample(300 + i * 7, kind=kind, size=128)
+            img, m, _ = D.make_sample(300 + i * 7 + 1000 * (kind == 'benign') + 2000 * (kind == 'malignant'), kind=kind, size=128)
             cv2.imwrite(f"{root}/{kind}/{kind}{i}.png", img); cv2.imwrite(f"{root}/{kind}/{kind}{i}_mask.png", m * 255)
     RD.import_real("fake", root, log=lambda *a: None)
     s = client.get("/api/real/sample?type=malignant").get_json()

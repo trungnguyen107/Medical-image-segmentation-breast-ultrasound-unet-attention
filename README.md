@@ -113,6 +113,16 @@ Bộ nhập tự làm các việc sau:
 
 Bảng kê CSV nhận các cột (không phân biệt hoa/thường): ảnh (`image`/`file`/`id`), mặt nạ (`mask`), nhãn (`label`/`pathology`/`class`), bệnh nhân (`patient`/`case`). Cách đặt tên cột và thư mục của từng bộ **chưa được kiểm tra với bản tải thật** trong môi trường phát triển (không có Internet); nếu lệnh nhập báo "thiếu mặt nạ/nhãn" hàng loạt, hãy tạo bảng kê riêng theo các cột trên.
 
+### Cách nhanh để có ~2.000 ảnh thật và huấn luyện (máy có Internet)
+
+```bash
+python fetch_data.py                                   # tải BUS-BRA (1.875 ảnh, CC BY 4.0) từ Zenodo và nhập
+python manage.py import-real uclm <thư mục BUS-UCLM> --manifest <csv>   # thêm ảnh BÌNH THƯỜNG (tải tay từ Mendeley)
+python manage.py train-real --models M1,M4 --epochs 30 --size 128 --base 16
+python manage.py sources                               # SOURCES.md + data/sources.csv: nguồn của từng ảnh
+```
+Trên Windows: bấm đúp `train_real.bat`. BUS-BRA chỉ có ảnh lành tính và ác tính, nên muốn đủ 3 trạng thái cần thêm ảnh bình thường từ BUS-UCLM hoặc BUSI. `train-real` huấn luyện U-Net (M1) và U-Net + Attention (M4) trên cùng dữ liệu, cùng tập chia, rồi in Dice/IoU, ΔDice và kiểm định Wilcoxon trên tập kiểm tra thật. Đường dẫn tệp Zenodo trong `fetch_data.py` và cấu trúc thư mục BUS-BRA chưa được kiểm tra với bản tải thật.
+
 Trên web: tab **Phân đoạn → Ảnh thật** lấy ngẫu nhiên ảnh thật theo loại; trang **Huấn luyện** có mục *Nguồn dữ liệu huấn luyện* để chọn ảnh thật.
 
 ```bash

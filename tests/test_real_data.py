@@ -11,15 +11,18 @@ sys.path.insert(0, ROOT)
 import db  # noqa: E402
 
 _tmp = tempfile.mkdtemp(prefix="sonoseg_real_")
-db.DATA = os.path.join(_tmp, "data"); db.DB_PATH = os.path.join(db.DATA, "app.db")
+_MY = (os.path.join(_tmp, "data"), os.path.join(_tmp, "data", "app.db"))
 import data as D  # noqa: E402
 import dataset_tools as T  # noqa: E402
 import real_data as RD  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)
-def cleanup():
+def isolated_db():
+    """CSDL riêng cho tệp kiểm thử này, trả lại CSDL cũ khi xong (để chạy chung với test_api)."""
+    old = (db.DATA, db.DB_PATH); db.DATA, db.DB_PATH = _MY; db._local.c = None
     yield
+    db.DATA, db.DB_PATH = old; db._local.c = None
     shutil.rmtree(_tmp, ignore_errors=True)
 
 
