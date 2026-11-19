@@ -175,6 +175,15 @@
     $$(".src").forEach((s) => (s.hidden = s.dataset.src !== b.dataset.src));
     if (b.dataset.src === "db") loadPick();
   }));
+  $$("[data-real]").forEach((b) => b.addEventListener("click", async () => {
+    busy(b, true);
+    try {
+      const r = await api(`/api/real/sample?type=${b.dataset.real}`);
+      await setFileInput(await toBlob(r.image), `Ảnh thật ${KIND[r.kind].toLowerCase()} · ${r.dataset}${r.patient ? " · bn " + r.patient : ""} · #${r.id}`, r.gt ? await toBlob(r.gt) : null);
+      runSeg();
+    } catch (e) { toast(e.message, "err"); }
+    busy(b, false);
+  }));
   async function loadPick() {
     const g = $("#pickGrid"); g.innerHTML = Array(12).fill('<div class="skeleton" style="aspect-ratio:1"></div>').join("");
     try {
@@ -557,18 +566,28 @@
       Charts.donut($("#dDonut"), { labels: kinds.map((k) => KIND[k]), values: kinds.map((k) => by("kind", k)), colors: kinds.map((k, i) => Charts.color(k === "unknown" ? 7 : i)), center: tot, centerLabel: "ảnh" });
       const splits = ["train", "val", "test", "ext", "upload"].filter((s) => by("split", s));
       Charts.bar($("#dBars"), { categories: splits.map((s) => SPLIT[s]), series: kinds.map((k, i) => ({ name: KIND[k], values: splits.map((s) => ds.filter((r) => r.split === s && r.kind === k).reduce((a, b) => a + b.n, 0)), color: Charts.color(k === "unknown" ? 7 : i) })), yMin: 0, yMax: Math.ceil(Math.max(...splits.map((s) => Math.max(...kinds.map((k) => ds.filter((r) => r.split === s && r.kind === k).reduce((a, b) => a + b.n, 0))))) * 1.15 / 10) * 10, dec: 0, tickDec: 0, height: 250 });
-      loadGallery();
+      loadGallery(); loadReal();
     } catch (e) { toast(e.message, "err"); }
   };
+  async function loadReal() {
+    try {
+      const p = await api("/api/real/progress"), pc = Math.min(100, p.pct || 0);
+      $("#realBar").style.width = pc + "%"; $("#realPct").textContent = F(p.pct || 0, 1) + "%";
+      $("#realMsg").textContent = `${p.with_mask.toLocaleString("vi-VN")} / ${p.target.toLocaleString("vi-VN")} ảnh thật có mặt nạ · còn thiếu ${p.missing.toLocaleString("vi-VN")} · hiện có thêm ${p.synthetic} ảnh mô phỏng (không tính)`;
+      $("#realNote").textContent = `Bình thường ${p.by_kind.normal} · Lành tính ${p.by_kind.benign} · Ác tính ${p.by_kind.malignant}`;
+      const rows = p.datasets.map((d) => `<tr><td><b>${esc(d.name)}</b></td><td class="num">${d.n}</td><td class="num">${d.with_mask}</td><td class="num">${d.by_kind.normal}/${d.by_kind.benign}/${d.by_kind.malignant}</td><td>${esc(d.license)}</td><td>${esc(d.cite)}</td></tr>`).join("");
+      $("#realTbl").innerHTML = `<thead><tr><th>Bộ dữ liệu</th><th>Ảnh</th><th>Có mặt nạ</th><th>BT/Lành/Ác</th><th>Giấy phép</th><th>Nguồn trích dẫn</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="muted">Chưa nhập ảnh thật nào. Tải bộ dữ liệu từ trang gốc rồi chạy <code>python manage.py import-real</code>.</td></tr>'}</tbody>`;
+    } catch (e) { toast(e.message, "err"); }
+  }
   async function loadGallery() {
     const g = $("#gallery"); g.innerHTML = Array(16).fill('<div class="skeleton" style="aspect-ratio:1"></div>').join("");
-    const j = await api(`/api/images?split=${$("#fSplit").value}&kind=${$("#fKind").value}&page=${gPage}&per=48`), sm = $("#fMask").checked;
+    const j = await api(`/api/images?origin=${$("#fOrigin").value}&split=${$("#fSplit").value}&kind=${$("#fKind").value}&page=${gPage}&per=48`), sm = $("#fMask").checked;
     g.innerHTML = j.rows.length ? j.rows.map((r, i) => `<div class="gi" data-id="${r.id}" style="animation-delay:${Math.min(i, 24) * 15}ms"><img src="${r.url}" loading="lazy" alt="">${sm && r.mask_url ? `<img class="mk" src="${r.mask_url}" loading="lazy" alt="">` : ""}<div class="tagb"><span class="k-${r.kind}">${KIND[r.kind] || r.kind}</span><span>${r.split}</span></div><div class="nm">${esc(r.filename.split("/").pop())}</div></div>`).join("")
       : '<div class="empty" style="grid-column:1/-1"><svg><use href="#i-image"/></svg><p>Không có ảnh phù hợp bộ lọc.</p></div>';
     $$(".gi", g).forEach((el) => el.addEventListener("click", () => imageDetail(j.rows.find((r) => r.id === +el.dataset.id))));
     pager($("#gPager"), j.total, j.per, gPage, (p) => { gPage = p; loadGallery(); });
   }
-  ["#fSplit", "#fKind", "#fMask"].forEach((s) => $(s).addEventListener("change", () => { gPage = 1; loadGallery(); }));
+  ["#fOrigin", "#fSplit", "#fKind", "#fMask"].forEach((s) => $(s).addEventListener("change", () => { gPage = 1; loadGallery(); }));
   function imageDetail(r) {
     modal(`<h3 style="margin:0 40px 14px 0">${esc(r.filename.split("/").pop())}</h3><div class="det"><div><h4>Ảnh</h4><img src="${r.url}" alt=""></div><div><h4>Mặt nạ chuẩn</h4>${r.mask_url ? `<img src="${r.mask_url}" alt="">` : '<div class="empty"><p>Không có mặt nạ.</p></div>'}</div>
       <div><dl><dt>Mã</dt><dd>#${r.id}</dd><dt>Bộ</dt><dd>${esc(r.dataset)}</dd><dt>Tập</dt><dd>${SPLIT[r.split] || r.split}</dd><dt>Loại</dt><dd>${KIND[r.kind] || r.kind}</dd><dt>Miền</dt><dd>${esc(r.domain)}</dd><dt>Kích thước</dt><dd>${r.width}×${r.height}</dd><dt>Khối u</dt><dd>${r.tumor_ratio === null ? "–" : F(r.tumor_ratio * 100, 2) + "% ảnh"}</dd><dt>Nguồn</dt><dd>${esc(r.source)}</dd></dl>
@@ -602,12 +621,21 @@
     $("#tEta").textContent = `Ước tính khoảng ${sec * ep < 90 ? Math.round(sec * ep) + " giây" : Math.round((sec * ep) / 60) + " phút"} trên CPU (≈ ${F(sec, 1)} giây/epoch). Sau khi xong, mô hình được đánh giá tự động trên tập kiểm tra.`;
   };
   $("#tEpochs").addEventListener("input", (e) => { $("#epv").textContent = e.target.value; eta(); });
+  $("#tData").addEventListener("change", async () => {          // ảnh thật: nâng trần số ảnh theo số ảnh train có thật
+    const t = $("#tN");
+    if ($("#tData").value === "real") {
+      const ds = await api("/api/datasets"), n = ds.filter((r) => r.split === "train" && !["sample", "uploads", "stu"].includes(r.dataset)).reduce((a, b) => a + b.n, 0);
+      if (!n) { toast("Chưa có ảnh thật trong tập huấn luyện. Hãy nhập bộ dữ liệu trước.", "err"); $("#tData").value = "sample"; return; }
+      t.max = n; t.step = 1; t.value = n;
+    } else { t.max = 240; t.step = 24; t.value = 240; }
+    $("#ntv").textContent = t.value; eta();
+  });
   $("#tN").addEventListener("input", (e) => { $("#ntv").textContent = e.target.value; eta(); });
   ["#tSize", "#tBase"].forEach((s) => $(s).addEventListener("change", eta)); $("#arch").addEventListener("change", eta); eta();
   $("#tStart").addEventListener("click", async () => {
     const b = $("#tStart"); busy(b, true);
     try {
-      const r = await api("/api/train", { json: { model_type: $("input[name=arch]:checked").value, epochs: +$("#tEpochs").value, n_train: +$("#tN").value, lr: +$("#tLr").value, bs: +$("#tBs").value, size: +$("#tSize").value, base: +$("#tBase").value, augment: $("#tAug").checked, name: $("#tName").value } });
+      const r = await api("/api/train", { json: { model_type: $("input[name=arch]:checked").value, epochs: +$("#tEpochs").value, n_train: +$("#tN").value, lr: +$("#tLr").value, bs: +$("#tBs").value, size: +$("#tSize").value, base: +$("#tBase").value, augment: $("#tAug").checked, dataset: $("#tData").value, name: $("#tName").value } });
       toast(`Đã bắt đầu lần huấn luyện #${r.run_id}.`, "ok"); S.watch = r.run_id; pollTrain(true);
     } catch (e) { toast(e.message, "err"); }
     busy(b, false);

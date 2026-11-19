@@ -1,6 +1,8 @@
 """SonoSeg – ứng dụng web phân đoạn khối u trên ảnh siêu âm vú bằng U-Net kết hợp Attention (Flask).
 
 Chạy:   python app.py [--host 127.0.0.1] [--port 5000] [--open]
+Chế độ OFFLINE: máy chủ chỉ lắng nghe 127.0.0.1, giao diện không tải tài nguyên nào từ Internet và khởi động không cần mạng.
+        (Tải STU-Hospital tự động chỉ chạy khi đặt SONOSEG_FETCH_STU=1; ảnh thật khác nhập bằng manage.py import-real.)
 
 Thành phần
   - CSDL SQLite (db.py): ảnh, lần huấn luyện, kết quả đánh giá, lịch sử ca.
@@ -22,6 +24,7 @@ from werkzeug.exceptions import HTTPException
 import data as D
 import dataset_tools as T
 import db
+import real_data as RD
 import metrics as MT
 import models as M
 import trainer
@@ -622,6 +625,10 @@ def api_images():
     for k in ("dataset", "split", "kind", "domain"):
         if a.get(k):
             where.append(f"{k}=?"); args.append(a[k])
+    if a.get("origin") == "real":
+        where.append(RD.REAL_SQL)
+    elif a.get("origin") == "synthetic":
+        where.append("dataset='sample'")
     page, per = max(1, int(a.get("page", 1))), min(200, max(1, int(a.get("per", 48))))
     total = db.q(f"SELECT COUNT(*) n FROM images WHERE {' AND '.join(where)}", args, one=True)["n"]
     rows = db.q(f"SELECT * FROM images WHERE {' AND '.join(where)} ORDER BY id LIMIT ? OFFSET ?", args + [per, (page - 1) * per])
@@ -634,6 +641,25 @@ def api_images():
 def api_datasets():
     rows = db.q("SELECT dataset, split, kind, domain, COUNT(*) n, AVG(tumor_ratio) tr FROM images GROUP BY dataset, split, kind, domain")
     return jsonify(rows)
+
+
+@app.route("/api/real/progress")
+def api_real_progress():
+    return jsonify(RD.progress())
+
+
+@app.route("/api/real/sample")
+def api_real_sample():
+    """Một ảnh siêu âm THẬT ngẫu nhiên (kèm mặt nạ nếu có) theo loại: normal | benign | malignant."""
+    kind = request.args.get("type", "benign")
+    if kind not in RD.KINDS:
+        return jsonify(error="Loại không hợp lệ."), 400
+    row = db.q(f"SELECT * FROM images WHERE {RD.REAL_SQL} AND kind=? ORDER BY RANDOM() LIMIT 1", (kind,), one=True)
+    if not row:
+        return jsonify(error="Chưa có ảnh thật loại này. Nhập bộ dữ liệu bằng: python manage.py import-real <bộ> <thư mục>"), 404
+    img, m = T.read_item(row)
+    return jsonify(id=row["id"], image=b64png(img), gt=b64png(m.astype(np.uint8) * 255) if m is not None else None,
+                   kind=kind, dataset=row["dataset"], split=row["split"], patient=row.get("patient"))
 
 
 @app.route("/api/images/upload", methods=["POST"])
@@ -660,7 +686,7 @@ def api_images_delete(iid):
     if not row:
         return jsonify(error="Không tìm thấy ảnh."), 404
     if row["source"] != "upload":
-        return jsonify(error="Chỉ xóa được ảnh do người dùng tải lên; bộ ảnh mẫu được giữ nguyên."), 400
+        return jsonify(error="Chỉ xóa được ảnh do người dùng tải lên; ảnh mẫu và ảnh thật đã nhập được giữ nguyên."), 400
     for p in (row["filename"], row["mask"]):
         if p and os.path.exists(db.path(p)):
             os.remove(db.path(p))
@@ -691,6 +717,8 @@ def api_train():
                lr=float(np.clip(float(j.get("lr", 1e-3)), 1e-5, 1e-1)), size=int(j.get("size", 96)), base=int(j.get("base", 8)),
                n_train=int(np.clip(int(j.get("n_train", 240)), 8, 100000)), augment=bool(j.get("augment", True)),
                dataset=j.get("dataset", "sample"))
+    if not (cfg["dataset"] in ("sample", "real") or db.q("SELECT 1 x FROM images WHERE dataset=? LIMIT 1", (cfg["dataset"],), one=True)):
+        raise ValueError("Bộ dữ liệu không tồn tại.")
     if cfg["size"] not in (64, 96, 128, 160, 192, 256) or cfg["base"] not in (4, 8, 16, 32):
         raise ValueError("Kích thước ảnh hoặc số kênh cơ sở không hợp lệ.")
     cfg["name"] = (j.get("name") or f"{mt} · {cfg['epochs']} epoch · {cfg['size']}px").strip()[:60]
@@ -828,7 +856,7 @@ def bootstrap(log=print):
         for k in BUILTIN:
             if os.path.exists(os.path.join(WEIGHTS, k + ".pt")):
                 trainer.evaluate(k, "test"); trainer.evaluate(k, "ext")
-    if os.environ.get("SONOSEG_NO_STU") is None and not db.q("SELECT COUNT(*) n FROM images WHERE dataset='stu'", one=True)["n"]:
+    if os.environ.get("SONOSEG_FETCH_STU") == "1" and os.environ.get("SONOSEG_NO_STU") is None and not db.q("SELECT COUNT(*) n FROM images WHERE dataset='stu'", one=True)["n"]:
         try:                                   # 42 ảnh siêu âm vú thật (STU-Hospital); bỏ qua nếu không có mạng
             T.import_stu(log=log)
         except Exception as e:  # noqa: BLE001

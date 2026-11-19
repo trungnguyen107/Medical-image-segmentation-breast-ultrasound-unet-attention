@@ -175,7 +175,7 @@
           <div class="card">
             <div class="card-h"><h3>Ảnh đầu vào</h3></div>
             <div class="tabs-s" role="tablist" id="srcTabs">
-              <button class="on" data-src="upload">Tải lên</button><button data-src="db">Từ CSDL</button><button data-src="sim">Mô phỏng</button>
+              <button class="on" data-src="upload">Tải lên</button><button data-src="real">Ảnh thật</button><button data-src="db">Từ CSDL</button><button data-src="sim">Mô phỏng</button>
             </div>
             <div class="src" data-src="upload">
               <label class="drop" id="drop" tabindex="0">
@@ -184,6 +184,10 @@
                 <b>Kéo thả ảnh siêu âm</b><small>hoặc bấm để chọn · PNG, JPG, BMP</small>
               </label>
               <label class="file-line"><svg><use href="#i-image"/></svg><span id="gtName">Mặt nạ chuẩn (tùy chọn)</span><input type="file" id="gtFile" accept="image/png,image/jpeg,image/bmp" hidden><em>Chọn</em></label>
+            </div>
+            <div class="src" data-src="real" hidden>
+              <p class="muted sm">Lấy ngẫu nhiên một ảnh siêu âm <b>thật</b> đã nhập vào CSDL, kèm mặt nạ do bác sĩ vẽ (nếu bộ dữ liệu có).</p>
+              <div class="seg-btns"><button class="btn" data-real="normal">Bình thường</button><button class="btn" data-real="benign">Lành tính</button><button class="btn" data-real="malignant">Ác tính</button></div>
             </div>
             <div class="src" data-src="db" hidden>
               <div class="row gap sm-gap"><select id="pickSplit" class="sel sm"><option value="test">Tập kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="val">Kiểm định</option><option value="train">Huấn luyện</option><option value="upload">Ảnh tải lên</option></select>
@@ -305,6 +309,12 @@
 
     <!-- ===================== CSDL ===================== -->
     <section class="page" id="p-data">
+      <div class="card" id="realCard">
+        <div class="card-h"><h3>Ảnh siêu âm thật — tiến độ so với mục tiêu</h3><span class="muted sm" id="realNote"></span></div>
+        <div class="prog-big"><div class="pb"><i id="realBar"></i></div><div class="pb-meta"><b id="realPct">0%</b><span id="realMsg"></span></div></div>
+        <div class="tbl-wrap"><table class="tbl" id="realTbl"></table></div>
+        <p class="muted sm">Chỉ tính ảnh thật có mặt nạ (không tính ảnh mô phỏng, không nhân bản bằng tăng cường dữ liệu). Nhập bộ mới: <code>python manage.py import-real &lt;bộ&gt; &lt;thư mục&gt;</code>. Hãy đọc giấy phép của từng bộ trước khi dùng.</p>
+      </div>
       <div class="kpis" id="dKpi"></div>
       <div class="grid g3">
         <div class="card"><div class="card-h"><h3>Theo loại tổn thương</h3></div><div id="dDonut"></div></div>
@@ -313,6 +323,7 @@
       <div class="card">
         <div class="card-h"><h3>Thư viện ảnh</h3>
           <div class="row gap sm-gap wrap">
+            <select class="sel sm" id="fOrigin"><option value="">Mọi nguồn</option><option value="real" selected>Ảnh thật</option><option value="synthetic">Ảnh mô phỏng</option></select>
             <select class="sel sm" id="fSplit"><option value="">Mọi tập</option><option value="train">Huấn luyện</option><option value="val">Kiểm định</option><option value="test">Kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="upload">Tải lên</option></select>
             <select class="sel sm" id="fKind"><option value="">Mọi loại</option><option value="benign">Lành tính</option><option value="malignant">Ác tính</option><option value="normal">Bình thường</option><option value="unknown">Chưa rõ</option></select>
             <label class="mini-chk"><input type="checkbox" id="fMask" checked> Hiện mặt nạ</label>
@@ -337,6 +348,7 @@
             <label class="fld">Kích thước ảnh<select id="tSize" class="sel"><option value="64">64×64</option><option value="96" selected>96×96</option><option value="128">128×128</option></select></label>
             <label class="fld">Kênh cơ sở<select id="tBase" class="sel"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option></select></label>
           </div>
+          <label class="fld">Nguồn dữ liệu huấn luyện<select id="tData" class="sel"><option value="sample">Ảnh mô phỏng (bộ mẫu)</option><option value="real">Ảnh thật (mọi bộ đã nhập)</option></select></label>
           <div class="switch-row"><span>Tăng cường dữ liệu (lật, xoay, độ sáng, nhiễu)</span><label class="switch"><input type="checkbox" id="tAug" checked><i></i></label></div>
           <label class="fld">Tên lần chạy<input class="inp" id="tName" placeholder="tự đặt nếu để trống"></label>
           <p class="muted sm" id="tEta"></p>

@@ -86,17 +86,39 @@ python app.py --open                 # http://127.0.0.1:5000
 
 Trên Windows, chỉ cần bấm đúp `run_web.bat`; cần Python 3.10 trở lên.
 
-Lần chạy đầu, ứng dụng tự làm ba việc:
-- tạo cơ sở dữ liệu `data/app.db`;
-- đánh giá các mô hình;
-- tải 42 ảnh thật STU-Hospital từ GitHub (nếu có mạng).
+Lần chạy đầu, ứng dụng tự làm hai việc, **không cần Internet**:
+- tạo cơ sở dữ liệu `data/app.db` và bộ ảnh mô phỏng mẫu;
+- đánh giá các mô hình có sẵn.
 
-Nếu không tải được ảnh thật lúc đầu, chạy `python manage.py import-stu` sau.
+**Chế độ offline.** Máy chủ chỉ lắng nghe `127.0.0.1`, giao diện không tải font, thư viện hay biểu đồ từ Internet. Ảnh siêu âm thật được đưa vào máy một lần bằng lệnh nhập (bên dưới); sau đó mọi thứ chạy ngoại tuyến. Việc tự tải STU-Hospital khi khởi động chỉ bật khi đặt `SONOSEG_FETCH_STU=1`.
+
+## Dữ liệu ảnh siêu âm thật (bình thường / lành tính / ác tính)
+
+Mục tiêu của đề tài là **10.000 ảnh thật có mặt nạ** (không tính ảnh mô phỏng và không tính ảnh nhân bản bằng tăng cường dữ liệu). Phần mềm chỉ *đếm và quản lý*, không tạo ảnh cho đủ số. Các bộ công khai đã làm sạch cộng lại khoảng 3.900 ảnh (xem [DATASETS.md](DATASETS.md)); phần còn lại phải đến từ hợp tác bệnh viện (phê duyệt đạo đức, ẩn danh, bác sĩ vẽ mặt nạ).
+
+```bash
+python manage.py import-real busi   <thư mục BUSI>                      # benign/ malignant/ normal/, mặt nạ *_mask.png
+python manage.py import-real busbra <thư mục BUS-BRA> --manifest bus_data.csv
+python manage.py import-real uclm   <thư mục BUS-UCLM> --manifest <csv>
+python manage.py import-real udiat  <thư mục Dataset B> --holdout       # tập kiểm tra ngoài, không bao giờ huấn luyện
+python manage.py progress                                               # số ảnh thật so với 10.000
+python manage.py dedup                                                  # cặp ảnh gần trùng giữa các bộ
+```
+
+Bộ nhập tự làm các việc sau:
+- **loại ảnh trùng** bằng băm cảm nhận dHash, kể cả giữa các bộ khác nhau (BUSI có khoảng 19% ảnh trùng);
+- **chia tập theo bệnh nhân** khi có cột mã bệnh nhân, phân tầng theo loại, để ảnh của một người không nằm ở cả huấn luyện lẫn kiểm tra;
+- ảnh *bình thường* có mặt nạ rỗng; ảnh lành/ác thiếu mặt nạ bị bỏ qua (trừ khi dùng `--allow-no-mask`);
+- ghi giấy phép và nguồn trích dẫn của từng bộ, hiển thị ở trang **Cơ sở dữ liệu ảnh** cùng thanh tiến độ.
+
+Bảng kê CSV nhận các cột (không phân biệt hoa/thường): ảnh (`image`/`file`/`id`), mặt nạ (`mask`), nhãn (`label`/`pathology`/`class`), bệnh nhân (`patient`/`case`). Cách đặt tên cột và thư mục của từng bộ **chưa được kiểm tra với bản tải thật** trong môi trường phát triển (không có Internet); nếu lệnh nhập báo "thiếu mặt nạ/nhãn" hàng loạt, hãy tạo bảng kê riêng theo các cột trên.
+
+Trên web: tab **Phân đoạn → Ảnh thật** lấy ngẫu nhiên ảnh thật theo loại; trang **Huấn luyện** có mục *Nguồn dữ liệu huấn luyện* để chọn ảnh thật.
 
 ```bash
 python manage.py import-stu                # 42 ảnh siêu âm thật (STU-Hospital)
 python manage.py import-busi <thư mục>     # BUSI (benign/, malignant/, normal/) nếu đã tải về
-python -m pytest -q tests                  # 14 ca kiểm thử
+python -m pytest -q tests                  # kiểm thử API, chỉ số, bộ nhập ảnh thật
 ```
 
 ## Cấu trúc repo
@@ -110,6 +132,7 @@ python -m pytest -q tests                  # 14 ca kiểm thử
 | `metrics.py` | Dice, IoU, Precision, Recall, HD95, chỉ số hình thái |
 | `app.py`, `templates/`, `static/` | Máy chủ Flask và giao diện một trang (biểu đồ SVG tự viết) |
 | `db.py`, `dataset_tools.py`, `manage.py`, `trainer.py` | CSDL SQLite, nhập dữ liệu, huấn luyện nền |
+| `real_data.py` | Nhập ảnh siêu âm thật: loại trùng, chia theo bệnh nhân, giấy phép, theo dõi tiến độ 10.000 ảnh |
 | `weights/final/` | M1–M4 (huấn luyện trên ảnh mô phỏng) |
 | `weights/ablation/` | 5 biến thể ablation (A3, A4, D1–D3) |
 | `weights/real/` | M4-STU (tinh chỉnh trên ảnh thật) |

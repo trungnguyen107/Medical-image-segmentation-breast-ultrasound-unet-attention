@@ -4,6 +4,10 @@
   python manage.py rebuild-sample       # sinh lại bộ ảnh mẫu
   python manage.py import-busi <thư mục> # nhập BUSI (benign/, malignant/, normal/) thành bộ dữ liệu 'busi'
   python manage.py import-stu           # tải và nhập 42 ảnh siêu âm vú THẬT (STU-Hospital) thành tập 'real'
+  python manage.py import-real <bộ> <thư mục> [--manifest tệp.csv] [--holdout] [--default-label benign|malignant|normal]
+                                        # nhập ảnh siêu âm THẬT: loại trùng, chia theo bệnh nhân, ghi giấy phép
+  python manage.py progress             # số ảnh thật đã có so với mục tiêu 10.000
+  python manage.py dedup                # liệt kê cặp ảnh gần trùng giữa các bộ
   python manage.py stats                # thống kê CSDL
 """
 import os, sys
@@ -20,6 +24,25 @@ def main(argv):
         print("Sinh lại bộ ảnh mẫu…"); print(T.build_sample(force=True), "ảnh")
     elif cmd == "import-stu":
         T.import_stu()
+    elif cmd == "import-real":
+        import argparse, real_data
+        ap = argparse.ArgumentParser(prog="manage.py import-real"); ap.add_argument("dataset"); ap.add_argument("root")
+        ap.add_argument("--manifest"); ap.add_argument("--holdout", action="store_true"); ap.add_argument("--default-label")
+        ap.add_argument("--allow-no-mask", action="store_true"); ap.add_argument("--seed", type=int, default=0)
+        a = ap.parse_args(argv[2:])
+        real_data.import_real(a.dataset, a.root, manifest=a.manifest, holdout=a.holdout, default_label=a.default_label,
+                              require_mask=not a.allow_no_mask, seed=a.seed)
+    elif cmd == "progress":
+        import real_data
+        p = real_data.progress()
+        print(f"Ảnh thật: {p['total']} (có mặt nạ {p['with_mask']}) / mục tiêu {p['target']} = {p['pct']}% · còn thiếu {p['missing']}")
+        print("  theo loại:", p["by_kind"], "| theo tập:", p["by_split"])
+        for d in p["datasets"]:
+            print(f"  {d['dataset']:10s} {d['n']:6d} ảnh ({d['with_mask']} mặt nạ) · {d['license']} · {d['cite']}")
+    elif cmd == "dedup":
+        import real_data
+        pr = real_data.dedup_report()
+        print(f"{len(pr)} cặp gần trùng"); [print("  ", a_, "≈", b_) for a_, b_ in pr[:50]]
     elif cmd == "import-busi":
         T.import_folder(argv[2], dataset="busi")
     db.init()
