@@ -725,7 +725,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 
 @media (prefers-reduced-motion:reduce){body::before,.ha-img::after{animation:none!important}.rv{opacity:1;transform:none}}
 .tbl.lead .ibar{min-width:92px;gap:8px}.tbl.lead td,.tbl.lead th{padding-left:8px;padding-right:8px}
-.ibar2{display:grid;grid-template-columns:minmax(40px,1fr) auto;align-items:center;gap:8px;min-width:96px}
+.ibar2{display:grid;grid-template-columns:minmax(28px,1fr) auto;align-items:center;gap:6px;min-width:78px}
 .ibar2 span{display:block;height:7px;border-radius:4px;background:var(--surface-3);overflow:hidden}
 .ibar2 i{display:block;height:100%;border-radius:4px;background:var(--grad)}
 .ibar2 b{font-variant-numeric:tabular-nums;font-size:13px;color:var(--text)}
