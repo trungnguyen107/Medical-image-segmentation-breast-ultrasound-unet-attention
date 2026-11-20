@@ -147,6 +147,7 @@ def test_import_stu_real_split(client):
     assert j["total"] == 42 and j["rows"][0]["mask_url"]
     r = A.trainer.evaluate("M4", "real")
     assert r["n"] == 42 and 0 < r["dice"] < 1
+    db.x("DELETE FROM images WHERE dataset='stu'")   # dọn lại để các ca sau bắt đầu với 0 ảnh thật
 
 
 def test_real_progress_and_origin_filter(client):
