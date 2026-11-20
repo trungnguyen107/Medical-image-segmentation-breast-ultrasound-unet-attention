@@ -611,3 +611,123 @@ html{scroll-behavior:smooth}
 .kd-real{background:var(--c7)}
 .badge.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}.real-card{border-color:color-mix(in srgb,var(--ok) 35%,var(--border))}
 .note.warn-note{border-left-color:var(--warn);background:var(--warn-soft)}
+
+/* =====================================================================================
+   GIAO DIỆN v2 – phong cách nền tảng y sinh AI: nền gradient mềm, thẻ kính, số liệu nổi bật,
+   hiệu ứng chuyển động nhẹ (tự tắt khi hệ điều hành bật "giảm chuyển động").
+   ===================================================================================== */
+:root{
+  --grad:linear-gradient(135deg,#06b6d4 0%,#2563eb 52%,#7c3aed 100%);
+  --grad-soft:linear-gradient(135deg,color-mix(in srgb,#06b6d4 16%,transparent),color-mix(in srgb,#7c3aed 14%,transparent));
+  --glass:color-mix(in srgb,var(--surface) 76%,transparent);
+  --glass-border:color-mix(in srgb,var(--border) 70%,rgba(255,255,255,.6));
+  --glow:0 22px 48px -24px color-mix(in srgb,#2563eb 55%,transparent);
+  --r:20px;
+}
+:root[data-theme="dark"]{--glass:color-mix(in srgb,var(--surface) 70%,transparent);--glass-border:color-mix(in srgb,var(--border) 80%,rgba(255,255,255,.06))}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass:color-mix(in srgb,var(--surface) 70%,transparent);--glass-border:color-mix(in srgb,var(--border) 80%,rgba(255,255,255,.06))}}
+
+/* nền: các đốm màu mờ + lưới chấm rất nhạt */
+body{background:var(--bg)}
+body::before{content:"";position:fixed;inset:-20vmax;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(40vmax 34vmax at 12% 8%,color-mix(in srgb,#06b6d4 22%,transparent),transparent 60%),
+    radial-gradient(36vmax 30vmax at 88% 4%,color-mix(in srgb,#7c3aed 16%,transparent),transparent 62%),
+    radial-gradient(42vmax 36vmax at 70% 96%,color-mix(in srgb,#10b981 13%,transparent),transparent 60%);
+  animation:drift 28s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(color-mix(in srgb,var(--text) 9%,transparent) 1px,transparent 1.2px);background-size:22px 22px;
+  mask-image:linear-gradient(to bottom,#000,transparent 70%)}
+@keyframes drift{to{transform:translate3d(3vmax,-2vmax,0) scale(1.06)}}
+
+/* khung kính */
+.nav{background:var(--glass);backdrop-filter:blur(18px) saturate(1.3);border-right:1px solid var(--glass-border)}
+.topbar{background:color-mix(in srgb,var(--bg) 60%,transparent);backdrop-filter:blur(16px) saturate(1.3)}
+.card,.kpi,.stats,.go-card,.an-sum>div,.tile,.cm,.facts{background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);border-color:var(--glass-border)}
+.card{transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .35s,background .25s}
+.card:hover{box-shadow:var(--shadow),var(--glow);border-color:color-mix(in srgb,#2563eb 22%,var(--glass-border))}
+.logo{background:var(--grad);box-shadow:0 8px 22px -8px #2563eb}
+
+/* thanh bên: mục đang chọn dạng viên thuốc gradient */
+.nav nav a{border-radius:12px;transition:background .2s,color .2s,transform .2s var(--ease)}
+.nav nav a:hover{transform:translateX(2px)}
+.nav nav a.on{background:var(--grad-soft);color:var(--text);font-weight:650}
+.nav nav a.on svg{color:#2563eb}
+.nav nav a.on::before{background:var(--grad);width:4px}
+
+/* nút chính: gradient + vệt sáng lướt qua */
+.btn{border-radius:12px}
+.btn.primary{background:var(--grad);border:0;color:#fff!important;box-shadow:0 10px 24px -12px #2563eb;overflow:hidden}
+.btn.primary:hover:not(:disabled){background:var(--grad);filter:brightness(1.08);box-shadow:0 14px 30px -12px #2563eb}
+.btn.primary::before{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);transition:left .6s var(--ease)}
+.btn.primary:hover::before{left:120%}
+.btn:not(.primary):hover:not(:disabled){box-shadow:0 8px 20px -14px #2563eb}
+
+/* phần mở đầu: bảng tối kiểu phòng thí nghiệm số */
+.hero{position:relative;color:#eaf2ff;border:0;overflow:hidden;
+  background:radial-gradient(60% 90% at 85% 10%,rgba(124,58,237,.45),transparent 60%),
+             radial-gradient(70% 90% at 10% 100%,rgba(6,182,212,.42),transparent 60%),
+             linear-gradient(135deg,#0a1630,#0c2448 55%,#10204a)}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:32px 32px;
+  mask-image:radial-gradient(80% 80% at 70% 40%,#000,transparent)}
+.hero>*{position:relative;z-index:1}
+.hero h2{color:#fff;font-size:28px}
+.hero p{color:#b9c8e6}
+.hero .eyebrow{background:rgba(255,255,255,.12);color:#cfe3ff;border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px)}
+.hero .btn:not(.primary){background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+.hero .btn:not(.primary):hover{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4)}
+.hero:hover{box-shadow:var(--shadow),0 30px 60px -30px rgba(37,99,235,.7)}
+.hero-art figcaption{color:#a9bbdb}
+.ha-img{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 40px -18px rgba(0,0,0,.6)}
+.ha-img::after{content:"";position:absolute;left:0;right:0;height:28%;top:-30%;
+  background:linear-gradient(to bottom,transparent,rgba(56,189,248,.35),rgba(56,189,248,.65) 52%,transparent 54%);animation:scan 3.6s ease-in-out infinite}
+#ha1::after{animation-delay:.6s}#ha2::after{animation-delay:1.2s}
+@keyframes scan{0%{top:-30%}60%,100%{top:110%}}
+.hero-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.hero-chips span{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:600;color:#e6f0ff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16)}
+.hero-chips span b{font-variant-numeric:tabular-nums;background:linear-gradient(90deg,#67e8f9,#a5b4fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* số liệu lớn chữ gradient */
+.st b,.an-sum b,.kpi .k-v{background:linear-gradient(90deg,var(--text) 0%,color-mix(in srgb,#2563eb 75%,var(--text)) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.st svg{background:var(--grad-soft);color:#2563eb}
+.go-card .gi-ic{background:var(--grad);color:#fff;box-shadow:0 10px 22px -12px #2563eb}
+.go-card:hover{box-shadow:var(--shadow),var(--glow)}
+
+/* biểu đồ: vẽ dần khi xuất hiện */
+.chart-svg .c-dot{animation:popIn .55s var(--ease) backwards;transform-box:fill-box;transform-origin:center}
+.chart-svg .c-bar{animation:growUp .7s var(--ease) backwards;transform-box:fill-box;transform-origin:bottom}
+.chart-svg .c-line{stroke-dasharray:2400;stroke-dashoffset:2400;animation:draw 1.3s var(--ease) forwards}
+.chart-svg .c-conn{animation:fadeIn .6s ease backwards}
+.chart-svg g:nth-of-type(2) .c-dot,.chart-svg .c-dot:nth-of-type(2n){animation-delay:.06s}
+.chart-svg .c-dot:nth-of-type(3n){animation-delay:.12s}
+@keyframes popIn{from{opacity:0;transform:scale(.2)}}
+@keyframes growUp{from{transform:scaleY(0)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fadeIn{from{opacity:0}}
+.ibar i,.meter .bar i,.m .bar i{background-image:var(--grad)!important}
+.ibar i{animation:growX .9s var(--ease) backwards;transform-origin:left}
+@keyframes growX{from{transform:scaleX(0)}}
+.gauge .g-fg{stroke:url(#gaugeGrad)}
+
+/* xuất hiện dần khi cuộn */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.rv.in{opacity:1;transform:none}
+
+/* bảng: hàng nổi khi rê chuột */
+.tbl tbody tr{transition:background .15s}
+.tbl tbody tr:hover td{background:color-mix(in srgb,#2563eb 6%,transparent)}
+
+/* ô ảnh: phóng nhẹ khi rê chuột */
+.tile img,.cm img,.strip img{transition:transform .5s var(--ease),filter .3s}
+.tile:hover img,.cm:hover img{transform:scale(1.04)}
+.strip button:hover img{filter:brightness(1.12)}
+
+@media (prefers-reduced-motion:reduce){body::before,.ha-img::after{animation:none!important}.rv{opacity:1;transform:none}}
+.tbl.lead .ibar{min-width:92px;gap:8px}.tbl.lead td,.tbl.lead th{padding-left:8px;padding-right:8px}
+.ibar2{display:grid;grid-template-columns:minmax(40px,1fr) auto;align-items:center;gap:8px;min-width:96px}
+.ibar2 span{display:block;height:7px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.ibar2 i{display:block;height:100%;border-radius:4px;background:var(--grad)}
+.ibar2 b{font-variant-numeric:tabular-nums;font-size:13px;color:var(--text)}
+@media (prefers-reduced-motion:reduce){.chart-svg .c-line{stroke-dasharray:none!important;stroke-dashoffset:0!important}}
+.meter .bar i{background-image:none!important;background:var(--ok)!important}.meter.y .bar i{background:var(--warn)!important}.meter.r .bar i{background:var(--bad-2)!important}

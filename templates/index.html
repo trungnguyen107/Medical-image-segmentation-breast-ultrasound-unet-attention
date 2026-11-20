@@ -11,6 +11,7 @@
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#06b6d4"/><stop offset=".55" stop-color="#2563eb"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3.5"/></symbol>
   <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
@@ -90,6 +91,7 @@
             <button class="btn primary lg" data-go="seg" data-demo="1"><svg><use href="#i-sparkle"/></svg>Chạy thử ngay</button>
             <button class="btn lg" data-go="anatomy"><svg><use href="#i-layers"/></svg>Xem bên trong M4</button>
           </div>
+          <div class="hero-chips" id="heroChips"></div>
         </div>
         <div class="hero-art" id="heroArt" aria-hidden="true">
           <figure><div class="ha-img skeleton" id="ha0"></div><figcaption>Ảnh siêu âm</figcaption></figure>
@@ -104,7 +106,7 @@
         <a class="go-card" data-go="ablation"><span class="gi-ic"><svg><use href="#i-toggle"/></svg></span><div><b>Đo đóng góp</b><span>Bật/tắt từng thành phần của M4 và xem Dice thay đổi ra sao.</span></div><svg class="arr"><use href="#i-arrow"/></svg></a>
       </div>
       <div class="grid dash2">
-        <div class="card"><div class="card-h"><h3>So sánh nhanh 4 mô hình</h3><a class="link" data-go="eval">Chi tiết</a></div><div id="dashModels"></div></div>
+        <div class="card"><div class="card-h"><h3>So sánh nhanh các mô hình</h3><a class="link" data-go="eval">Chi tiết</a></div><div id="dashModels"></div></div>
         <div class="card"><div class="card-h"><h3>Ca gần đây</h3><a class="link" data-go="history">Tất cả</a></div><div id="dashRecent" class="recent list"></div></div>
       </div>
     </section>
@@ -113,9 +115,9 @@
     <section class="page" id="p-anatomy">
       <div class="card an-top">
         <div class="an-pick">
-          <div class="card-h"><h3>Ảnh đầu vào</h3><span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="an"><button class="on" data-split="test">Mô phỏng</button><button data-split="real">Ảnh thật</button></span><button class="btn sm" id="anMore">Ảnh khác</button><label class="btn sm"><svg><use href="#i-upload"/></svg>Tải ảnh<input type="file" id="anFile" accept="image/*" hidden></label></span></div>
+          <div class="card-h"><h3>Ảnh đầu vào</h3><span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="an"><button class="on" data-split="test">Mô phỏng</button><button data-split="busi_test">BUSI</button><button data-split="real">STU</button></span><button class="btn sm" id="anMore">Ảnh khác</button><label class="btn sm"><svg><use href="#i-upload"/></svg>Tải ảnh<input type="file" id="anFile" accept="image/*" hidden></label></span></div>
           <div class="strip" id="anStrip"></div>
-          <div class="strip-legend"><span><i class="kd-benign"></i>Lành tính</span><span><i class="kd-malignant"></i>Ác tính</span><span><i class="kd-real"></i>Ảnh thật</span><span class="muted">Mô phỏng: tập kiểm tra. Ảnh thật: 42 ảnh siêu âm STU-Hospital (Zhuang et al., 2019), đều có mặt nạ chuẩn của bác sĩ.</span></div>
+          <div class="strip-legend"><span><i class="kd-benign"></i>Lành tính</span><span><i class="kd-malignant"></i>Ác tính</span><span><i class="kd-real"></i>Ảnh thật</span><span class="muted">Mô phỏng: tập kiểm tra. BUSI: tập kiểm tra ảnh thật (Ai Cập). STU: 42 ảnh thật của bệnh viện khác. Tất cả đều có mặt nạ chuẩn.</span></div>
         </div>
         <div class="an-ctl">
           <label class="fld"><span>Mô hình</span><select class="sel" id="anModel"></select></label>
@@ -161,7 +163,7 @@
       </div>
       <div class="card">
         <div class="card-h"><h3>Thử trên một ảnh</h3>
-          <span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="ab"><button class="on" data-split="test">Mô phỏng</button><button data-split="real">Ảnh thật</button></span><label class="fld inline"><span>So với</span><select class="sel sm" id="abRef"></select></label><button class="btn sm" id="abMore">Ảnh khác</button></span></div>
+          <span class="row gap sm-gap"><span class="seg-ctl sm src-sw" data-for="ab"><button class="on" data-split="test">Mô phỏng</button><button data-split="busi_test">BUSI</button><button data-split="real">STU</button></span><label class="fld inline"><span>So với</span><select class="sel sm" id="abRef"></select></label><button class="btn sm" id="abMore">Ảnh khác</button></span></div>
         <div class="strip" id="abStrip"></div>
         <div class="strip-legend"><span><i class="kd-benign"></i>Lành tính</span><span><i class="kd-malignant"></i>Ác tính</span><span class="muted">Bấm một ô kết quả để chọn tổ hợp; bản đồ bên phải so sánh nó với mô hình ở ô “So với”.</span></div>
         <div id="abImg"></div>
@@ -186,7 +188,7 @@
               <label class="file-line"><svg><use href="#i-image"/></svg><span id="gtName">Mặt nạ chuẩn (tùy chọn)</span><input type="file" id="gtFile" accept="image/png,image/jpeg,image/bmp" hidden><em>Chọn</em></label>
             </div>
             <div class="src" data-src="db" hidden>
-              <div class="row gap sm-gap"><select id="pickSplit" class="sel sm"><option value="test">Tập kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="val">Kiểm định</option><option value="train">Huấn luyện</option><option value="upload">Ảnh tải lên</option></select>
+              <div class="row gap sm-gap"><select id="pickSplit" class="sel sm"><option value="test">Tập kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="busi_test">BUSI – kiểm tra</option><option value="real">Ảnh thật (STU)</option><option value="val">Kiểm định</option><option value="train">Huấn luyện</option><option value="upload">Ảnh tải lên</option></select>
                 <select id="pickKind" class="sel sm"><option value="">Mọi loại</option><option value="benign">Lành tính</option><option value="malignant">Ác tính</option><option value="normal">Bình thường</option></select></div>
               <div class="pick-grid" id="pickGrid"></div>
             </div>
@@ -313,7 +315,7 @@
       <div class="card">
         <div class="card-h"><h3>Thư viện ảnh</h3>
           <div class="row gap sm-gap wrap">
-            <select class="sel sm" id="fSplit"><option value="">Mọi tập</option><option value="train">Huấn luyện</option><option value="val">Kiểm định</option><option value="test">Kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="real">Ảnh thật (STU)</option><option value="upload">Tải lên</option></select>
+            <select class="sel sm" id="fSplit"><option value="">Mọi tập</option><option value="train">Huấn luyện</option><option value="val">Kiểm định</option><option value="test">Kiểm tra (A)</option><option value="ext">Thiết bị khác (B)</option><option value="busi_test">BUSI – kiểm tra</option><option value="busi_train">BUSI – huấn luyện</option><option value="real">Ảnh thật (STU)</option><option value="upload">Tải lên</option></select>
             <select class="sel sm" id="fKind"><option value="">Mọi loại</option><option value="benign">Lành tính</option><option value="malignant">Ác tính</option><option value="normal">Bình thường</option><option value="unknown">Chưa rõ</option></select>
             <label class="mini-chk"><input type="checkbox" id="fMask" checked> Hiện mặt nạ</label>
             <button class="btn sm primary" id="upOpen"><svg><use href="#i-upload"/></svg>Thêm ảnh</button>
@@ -361,7 +363,7 @@
     <section class="page" id="p-eval">
       <div class="card">
         <div class="card-h"><h3>Chọn mô hình để so sánh</h3>
-          <div class="row gap sm-gap"><select id="eSplit" class="sel sm"><option value="test">Tập kiểm tra – miền A (80 ảnh)</option><option value="ext">Thiết bị khác – miền B (60 ảnh)</option><option value="real">Ảnh siêu âm thật – STU (42 ảnh)</option></select>
+          <div class="row gap sm-gap"><select id="eSplit" class="sel sm"><option value="test">Tập kiểm tra – miền A (80 ảnh)</option><option value="ext">Thiết bị khác – miền B (60 ảnh)</option><option value="busi">BUSI – tập kiểm tra (ảnh thật)</option><option value="real">Ảnh siêu âm thật – STU (42 ảnh)</option></select>
             <button class="btn sm primary" id="eRun"><svg><use href="#i-play"/></svg>Đánh giá lại</button></div></div>
         <div class="chips" id="eModels"></div>
       </div>

@@ -131,6 +131,49 @@ def import_stu(log=print):
     return n
 
 
+BUSI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "external", "Dataset_BUSI_with_GT")
+
+
+def import_busi(root=BUSI_DIR, seed=0, split=(0.7, 0.1, 0.2), log=print):
+    """Nhập BUSI vào CSDL với ĐÚNG cách chia của data.load_busi (lọc trùng bằng băm 8×8, 70/10/20 theo lớp, hạt 0),
+    để số liệu trên web khớp thí nghiệm R3. Tập lưu là busi_train / busi_val / busi_test."""
+    db.init(); items = []
+    for kind in ["benign", "malignant", "normal"]:
+        for f in sorted(glob.glob(os.path.join(root, kind, "*.png"))):
+            if "_mask" in f:
+                continue
+            img = imio.imread(f, cv2.IMREAD_GRAYSCALE)
+            if img is None:
+                continue
+            m = np.zeros_like(img, np.uint8)
+            for mf in sorted(glob.glob(f[:-4] + "_mask*.png")):
+                mm = imio.imread(mf, cv2.IMREAD_GRAYSCALE)
+                if mm is not None and mm.shape == m.shape:
+                    m |= (mm > 127).astype(np.uint8)
+            items.append((f, img, m, kind))
+    seen, uniq = set(), []
+    for it in items:
+        h = (cv2.resize(it[1], (8, 8), interpolation=cv2.INTER_AREA) > it[1].mean()).tobytes()
+        if h not in seen:
+            seen.add(h); uniq.append(it)
+    rng = np.random.default_rng(seed); n = 0
+    for kind in ["benign", "malignant", "normal"]:
+        idx = [i for i, it in enumerate(uniq) if it[3] == kind]
+        rng.shuffle(idx)
+        a, b = int(split[0] * len(idx)), int((split[0] + split[1]) * len(idx))
+        for name, part in [("busi_train", idx[:a]), ("busi_val", idx[a:b]), ("busi_test", idx[b:])]:
+            for i in part:
+                f, img, m, k = uniq[i]
+                base = os.path.splitext(os.path.basename(f))[0].replace(" ", "_").replace("(", "").replace(")", "")
+                rel, relm = f"busi/{k}/{base}.png", f"busi/{k}/{base}_mask.png"
+                _save(rel, img); _save(relm, m * 255)
+                db.x("INSERT OR REPLACE INTO images(dataset,filename,mask,kind,domain,split,source,width,height,tumor_ratio,created_at) "
+                     "VALUES('busi',?,?,?,'BUSI',?,'busi',?,?,?,?)", (rel, relm, k, name, img.shape[1], img.shape[0], float(m.mean()), db.now()))
+                n += 1
+    log(f"Đã nhập {n} ảnh BUSI (sau khi lọc trùng).")
+    return n
+
+
 def add_upload(img, mask=None, kind="unknown", name="upload"):
     db.init()
     safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in name)[:40] or "upload"

@@ -64,14 +64,17 @@ def list_models():
         out.append(dict(id=k, name=M.NAMES.get(ck["model"], k), type=ck["model"], source="builtin", size=ck["size"], base=ck["base"],
                         params=M.count_params(m), val_dice=round(float(ck["val_dice"]), 4), has_attention=bool(m.attention_gates()),
                         gflops=round(eff[k]["gflops"], 3) if k in eff else None, desc=DESC.get(k, ""), eval=evals.get(k, {})))
-    for f in sorted(glob.glob(os.path.join(ROOT, "weights", "real", "*-STU.pt"))):
+    for f in sorted(glob.glob(os.path.join(ROOT, "weights", "real", "*-BUSI.pt"))) + sorted(glob.glob(os.path.join(ROOT, "weights", "real", "*-STU.pt"))):
         k = os.path.basename(f)[:-3]
         m, ck = trainer.load_model(k)
-        out.append(dict(id=k, name=f"{M.NAMES.get(ck['model'], ck['model'])} · ảnh thật", type=ck["model"], source="real", size=ck["size"], base=ck["base"],
-                        params=M.count_params(m), val_dice=r(ck.get("val_dice"), 4), has_attention=bool(m.attention_gates()), gflops=None,
-                        desc=f"Tinh chỉnh trên 42 ảnh siêu âm thật STU-Hospital từ trọng số {ck['model']}"
-                             f"{' (công thức cải tiến R, có lật ngang khi suy luận)' if ck.get('tta') else ''}. Dice kiểm định chéo 5 phần: {str(r(ck.get('val_dice'), 3)).replace('.', ',')}.",
-                        eval=evals.get(k, {})))
+        busi = k.endswith("-BUSI")
+        tta = " (công thức cải tiến R, lật ngang khi suy luận)" if ck.get("tta") else ""
+        desc = (f"Học trên tập huấn luyện BUSI (ảnh siêu âm thật, Ai Cập) từ trọng số {ck['model']}{tta}. Mô hình khuyến nghị cho ảnh thật."
+                if busi else f"Tinh chỉnh trên 42 ảnh siêu âm thật STU-Hospital từ trọng số {ck['model']}{tta}. "
+                             f"Dice kiểm định chéo 5 phần: {str(r(ck.get('val_dice'), 3)).replace('.', ',')}.")
+        out.append(dict(id=k, name=f"{M.NAMES.get(ck['model'], ck['model'])} · {'BUSI' if busi else 'ảnh thật STU'}", type=ck["model"],
+                        source="real", size=ck["size"], base=ck["base"], params=M.count_params(m), val_dice=r(ck.get("val_dice"), 4),
+                        has_attention=bool(m.attention_gates()), gflops=None, desc=desc, eval=evals.get(k, {})))
     for row in db.q("SELECT * FROM runs WHERE status IN ('done','stopped') AND weights IS NOT NULL ORDER BY id"):
         if not os.path.exists(os.path.join(ROOT, row["weights"])):
             continue
@@ -151,6 +154,9 @@ def infer(mid, img, thr=0.5, post=True, want_att=True):
     prob_o = back(prob); mask = prob_o > thr
     if post and mask.any():
         mask = MT.largest_component(mask)
+        pp = ck.get("post")                    # mô hình BUSI: bỏ vùng quá nhỏ / quá mờ (chọn trên tập kiểm định)
+        if pp and (mask.mean() < pp.get("min_area", 0) or prob_o[mask].max() < pp.get("min_peak", 0)):
+            mask = np.zeros_like(mask)
     return prob_o, mask, [back(a) for a in maps], ms
 
 
@@ -732,7 +738,7 @@ def api_runs_delete(rid):
 def api_evaluate():
     j = request.get_json(force=True, silent=True) or {}
     split = j.get("split", "test")
-    if split not in ("test", "ext", "val", "real"):
+    if split not in ("test", "ext", "val", "real", "busi"):
         raise ValueError("Tập đánh giá không hợp lệ.")
     ids = j.get("models") or [m["id"] for m in list_models()]
     if split == "real":                       # mô hình đã tinh chỉnh trên chính 42 ảnh thật: không đánh giá lại trên tập đó
@@ -802,6 +808,15 @@ def api_cases_csv():
     return Response("﻿" + s.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=lich_su_ca.csv"})
 
 
+@app.route("/api/busi")
+def api_busi():
+    p = os.path.join(RESULTS, "busi_results.json")
+    if not os.path.exists(p):
+        return jsonify({})
+    j = json.load(open(p, encoding="utf8")); j.pop("runs", None)
+    return jsonify(j)
+
+
 @app.route("/api/real")
 def api_real():
     p = os.path.join(RESULTS, "real_results.json")
@@ -833,7 +848,13 @@ def bootstrap(log=print):
             T.import_stu(log=log)
         except Exception as e:  # noqa: BLE001
             log(f"Chưa nhập được ảnh thật STU-Hospital: {e}")
+    if os.environ.get("SONOSEG_NO_BUSI") is None and not db.q("SELECT COUNT(*) n FROM images WHERE dataset='busi'", one=True)["n"] and os.path.isdir(T.BUSI_DIR):
+        T.import_busi(log=log)                 # BUSI chỉ có khi người dùng tự tải về data/external/
     have = {(e["model_id"], e["split"]) for e in db.q("SELECT model_id, split FROM evals")}
+    if db.q("SELECT COUNT(*) n FROM images WHERE dataset='busi'", one=True)["n"]:
+        for m in list_models():
+            if (m["id"], "busi") not in have and m["source"] in ("builtin", "real"):
+                trainer.evaluate(m["id"], "busi")
     if db.q("SELECT COUNT(*) n FROM images WHERE dataset='stu'", one=True)["n"]:
         for k in BUILTIN:
             if (k, "real") not in have and os.path.exists(os.path.join(WEIGHTS, k + ".pt")):

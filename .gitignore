@@ -16,3 +16,4 @@ results_train.log
 *.log
 .DS_Store
 Thumbs.db
+results/busi_cache_*.npz

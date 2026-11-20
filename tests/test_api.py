@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 import db  # noqa: E402
 
 os.environ["SONOSEG_NO_STU"] = "1"   # không tải ảnh thật khi kiểm thử
+os.environ["SONOSEG_NO_BUSI"] = "1"  # không nhập BUSI dù máy đã có
 _tmp = tempfile.mkdtemp(prefix="sonoseg_test_")
 db.DATA = _tmp; db.DB_PATH = os.path.join(_tmp, "app.db")
 import dataset_tools as T  # noqa: E402

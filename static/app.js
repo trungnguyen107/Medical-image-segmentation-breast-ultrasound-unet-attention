@@ -7,7 +7,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const icon = (n) => `<svg><use href="#i-${n}"/></svg>`;
   const KIND = { benign: "Lành tính", malignant: "Ác tính", normal: "Bình thường", unknown: "Chưa rõ", real: "Ảnh thật" };
-  const SPLIT = { train: "Huấn luyện", val: "Kiểm định", test: "Kiểm tra (A)", ext: "Thiết bị khác (B)", real: "Ảnh thật (STU)", upload: "Tải lên" };
+  const SPLIT = { train: "Huấn luyện", val: "Kiểm định", test: "Kiểm tra (A)", ext: "Thiết bị khác (B)", real: "Ảnh thật (STU)", busi_train: "BUSI – huấn luyện", busi_val: "BUSI – kiểm định", busi_test: "BUSI – kiểm tra", upload: "Tải lên" };
   const KIND_TXT = { speckle: ["Nhiễu đốm nhân", "σ"], gauss: ["Nhiễu Gauss cộng", "σ"], contrast: ["Giảm tương phản", "hệ số"] };
   const LEVELS = { speckle: [0, 0.1, 0.2, 0.3, 0.4], gauss: [0, 0.05, 0.1, 0.15, 0.2], contrast: [1, 0.8, 0.6, 0.4, 0.2] };
   const S = { models: [], R: null, input: null, res: null, layer: "overlay", gate: "mean", split: 0.5, imgs: {}, robKind: "speckle", trainPoll: null };
@@ -87,8 +87,29 @@
     document.title = `${PAGES[p][0]} · SonoSeg`;
     $("#nav").classList.remove("open"); $("#scrim").classList.remove("on");
     window.scrollTo({ top: 0 });
-    if (RENDER[p]) RENDER[p]();
+    if (RENDER[p]) Promise.resolve(RENDER[p]()).finally(() => reveal(p));
+    else reveal(p);
     if (p === "seg") requestAnimationFrame(fitCanvas);
+  }
+  // ---- hiệu ứng: thẻ hiện dần khi cuộn tới, số đếm tăng dần
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const io = "IntersectionObserver" in window && !reduced ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" }) : null;
+  function reveal(p) {
+    if (!io) return;
+    $$(`#p-${p} > .card, #p-${p} > .grid > .card, #p-${p} > .go3 > .go-card, #p-${p} > .stats`).forEach((el, i) => {
+      if (el.classList.contains("rv")) return;
+      el.classList.add("rv"); el.style.transitionDelay = Math.min(i, 6) * 60 + "ms"; io.observe(el);
+    });
+  }
+  function countUp(el) {
+    const txt = el.textContent.trim(), m = txt.match(/^([^0-9]*)([0-9]+(?:[.,][0-9]+)?)(.*)$/);
+    if (!m || reduced) return;
+    const dec = (m[2].split(/[.,]/)[1] || "").length, target = parseFloat(m[2].replace(",", ".")), t0 = performance.now(), dur = 900, tok = {};
+    el._cu = tok;
+    const step = () => { if (el._cu !== tok) return; const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = k >= 1 ? txt : m[1] + (target * e).toFixed(dec).replace(".", ",") + m[3]; if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+    setTimeout(() => { if (el._cu === tok) { el.textContent = txt; el._cu = null; } }, dur + 150);   // luôn kết thúc đúng số
   }
   function rerender() { if (page && RENDER[page]) RENDER[page](true); if (page === "seg") draw(); }
   window.addEventListener("hashchange", () => show(location.hash.slice(1) || "dash"));
@@ -141,17 +162,20 @@
       const runsDone = st.runs.filter((r) => r.status === "done").reduce((a, b) => a + b.n, 0), runsAll = st.runs.reduce((a, b) => a + b.n, 0);
       const m4 = st.evals.find((e) => e.model_id === "M4" && e.split === "test"), m4b = st.evals.find((e) => e.model_id === "M4" && e.split === "ext");
       const stat = (v, l, ic) => `<div class="st">${icon(ic)}<b>${v}</b><span>${l}</span></div>`;
-      $("#dashKpi").innerHTML = stat(nImg, `ảnh mẫu · ${(byKind.benign || 0) + (byKind.malignant || 0)} có khối u`, "db") + stat(S.models.length, "mô hình sẵn sàng", "net") +
+      $("#dashKpi").innerHTML = stat(nImg, `ảnh trong CSDL · ${(byKind.benign || 0) + (byKind.malignant || 0)} có khối u`, "db") + stat(S.models.length, "mô hình sẵn sàng", "net") +
         stat(m4 ? F(m4.dice, 3) : "–", `Dice của M4${m4b ? " · thiết bị khác " + F(m4b.dice, 3) : ""}`, "chart") + stat(st.cases.n || 0, `ca đã phân đoạn${runsAll ? ` · ${runsAll} lần huấn luyện` : ""}`, "clock");
       const get = (id, sp) => (st.evals.find((e) => e.model_id === id && e.split === sp) || {});
-      const lb = S.models.filter((m) => m.source === "builtin").map((m) => ({ m, a: get(m.id, "test"), b: get(m.id, "ext"), c: get(m.id, "real") })).filter((x) => x.a.dice !== undefined).sort((x, y) => y.a.dice - x.a.dice);
-      const barc = (v, c) => v === undefined || v === null ? "–" : `<div class="ibar"><i style="width:${Math.max(0, Math.min(1, v)) * 70}%;background:${c}"></i><b>${F(v, 3)}</b></div>`;
-      $("#dashModels").innerHTML = lb.length ? `<div class="tbl-wrap"><table class="tbl lead"><thead><tr><th>Mô hình</th><th>Cùng thiết bị</th><th>Thiết bị khác</th>${lb.some((x) => x.c.dice !== undefined) ? "<th>Ảnh thật</th>" : ""}<th class="n">ms/ảnh</th></tr></thead><tbody>` +
-        lb.map((x) => `<tr class="${x.m.id === "M4" ? "m4" : ""}"><td><div class="mn">${mtag(x.m.id)}<span>${esc(x.m.type === "M4" ? "Đề xuất" : x.m.name.replace(" (cơ sở)", ""))}</span></div></td><td>${barc(x.a.dice, Charts.color(0))}</td><td>${barc(x.b.dice, Charts.color(1))}</td>${lb.some((y) => y.c.dice !== undefined) ? `<td>${barc(x.c.dice, Charts.color(2))}</td>` : ""}<td class="n">${F(x.a.ms, 1)}</td></tr>`).join("") + `</tbody></table></div><p class="muted sm" style="margin:10px 0 0">Dice trên ảnh có khối u: 80 ảnh cùng thiết bị, 60 ảnh thiết bị khác${lb.some((y) => y.c.dice !== undefined) ? ", 42 ảnh siêu âm thật STU (mô hình chưa từng thấy ảnh thật)" : ""}. Bốn mô hình ngang nhau khi cùng thiết bị; khác biệt nằm ở ảnh lạ.</p>`
+      const lb = S.models.filter((m) => m.source === "builtin" || /-BUSI$/.test(m.id)).map((m) => ({ m, a: get(m.id, "test"), b: get(m.id, "ext"), c: get(m.id, "real"), d: get(m.id, "busi") })).filter((x) => x.a.dice !== undefined || x.d.dice !== undefined);
+      const barc = (v, c) => v === undefined || v === null ? "–" : `<div class="ibar2"><span><i style="width:${Math.max(0, Math.min(1, v)) * 100}%"></i></span><b>${F(v, 3)}</b></div>`;
+      $("#dashModels").innerHTML = lb.length ? `<div class="tbl-wrap"><table class="tbl lead"><thead><tr><th>Mô hình</th><th>Mô phỏng (A)</th><th>Mô phỏng (B)</th>${lb.some((x) => x.d.dice !== undefined) ? "<th>BUSI thật</th>" : ""}${lb.some((x) => x.c.dice !== undefined) ? "<th>STU thật</th>" : ""}</tr></thead><tbody>` +
+        lb.map((x) => `<tr class="${x.m.id === "M4" ? "m4" : ""}"><td><div class="mn">${mtag(x.m.id)}<span>${esc(/-BUSI$/.test(x.m.id) ? "M4 học trên BUSI" : x.m.type === "M4" ? "Đề xuất" : x.m.name.replace(" (cơ sở)", ""))}</span></div></td><td>${barc(x.a.dice, Charts.color(0))}</td><td>${barc(x.b.dice, Charts.color(1))}</td>${lb.some((y) => y.d.dice !== undefined) ? `<td>${barc(x.d.dice, Charts.color(6))}</td>` : ""}${lb.some((y) => y.c.dice !== undefined) ? `<td>${barc(x.c.dice, Charts.color(2))}</td>` : ""}</tr>`).join("") + `</tbody></table></div><p class="muted sm" style="margin:10px 0 0">Dice trên ảnh có khối u. M1–M4 chỉ học ảnh mô phỏng nên điểm trên ảnh thật thấp; mô hình học trên BUSI mới là mô hình dùng cho ảnh thật (STU là bệnh viện khác, chưa từng học).</p>`
         : '<div class="empty"><p>Chưa có kết quả đánh giá.</p></div>';
       $("#dashRecent").innerHTML = st.recent.length ? st.recent.slice(0, 4).map((c) => `<div class="rc" data-go="history"><img src="/data/${c.thumb}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noimg',textContent:'—'}))"><div><b title="${esc(c.image_label)}">${esc(c.image_label)}</b><span>${c.model_id} · ${c.dice !== null ? "Dice " + F(c.dice, 3) : F(c.area_ratio, 2) + "% diện tích"}</span></div></div>`).join("")
         : `<div class="empty"><svg><use href="#i-clock"/></svg><p>Chưa có ca nào. Bấm <b>Chạy thử ngay</b> để phân đoạn ảnh đầu tiên.</p></div>`;
       heroArt();
+      $$("#dashKpi .st b").forEach(countUp);
+      const bB = st.evals.filter((e) => e.split === "busi" && /-BUSI$/.test(e.model_id)).sort((x, y) => y.dice - x.dice)[0], rl = st.evals.find((e) => e.model_id === "M4" && e.split === "real");
+      $("#heroChips").innerHTML = [bB ? `Dice ${esc(bB.model_id)} trên BUSI <b>${F(bB.dice, 3)}</b>` : null, rl ? `Ảnh thật chưa học <b>${F(rl.dice, 3)}</b>` : null, `Suy luận <b>~15 ms</b> trên CPU`, `Tham số <b>0,50 triệu</b>`].filter(Boolean).map((x) => `<span>${x}</span>`).join("");
     } catch (e) { toast(e.message, "err"); }
   };
   let heroDone = false;
@@ -729,12 +753,20 @@
     const MK = ["M1", "M2", "M3", "M4"], M = Object.fromEntries(R.main.map((m) => [m.key, m])), d = R.data, C = (k) => Charts.color(MK.indexOf(k));
     if (S.real === undefined) S.real = await api("/api/real").catch(() => ({}));
     const RL = S.real && S.real.cv ? S.real : null;
+    if (S.busi === undefined) S.busi = await api("/api/busi").catch(() => ({}));
+    const BU = S.busi && S.busi.summary ? S.busi : null;
+    const BK = BU ? ["M1", "M2", "M3", "M4", "M1-R", "M4-R"].filter((k) => BU.summary[k]) : [];
+    const busiCard = BU ? `<div class="card real-card"><div class="card-h"><h3>BUSI – ${BU.dataset.n.train + BU.dataset.n.val + BU.dataset.n.test} ảnh siêu âm thật (R3)</h3><span class="badge ok">Dữ liệu thật</span></div>
+      <p class="muted sm" style="margin:0 0 12px">${esc(BU.dataset.ref)}. Chia ${BU.dataset.n.train}/${BU.dataset.n.val}/${BU.dataset.n.test} ảnh (huấn luyện/kiểm định/kiểm tra) sau khi lọc trùng; khởi tạo từ trọng số mô phỏng, tối đa ${BU.setup.epochs} epoch, chọn epoch tốt nhất theo Dice kiểm định. Cột STU: 42 ảnh của bệnh viện khác, mô hình chưa từng học.</p>
+      <div class="grid g2" style="margin:0"><div><h4>Dice trên tập kiểm tra BUSI và trên STU (ngoài miền)</h4><div id="xb1" class="chart"></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mô hình</th><th class="n">Dice BUSI</th><th class="n">IoU</th><th class="n">HD95</th><th class="n">Lành / Ác</th><th class="n">Báo nhầm</th><th class="n">Dice STU</th></tr></thead><tbody>${BK.map((k) => { const v = BU.summary[k]; return `<tr class="${k === "M4-R" ? "m4" : ""}"><td><b>${k}</b></td><td class="n">${F(v.test_dice, 3)}</td><td class="n">${F(v.iou, 3)}</td><td class="n">${F(v.hd95, 1)}</td><td class="n">${F(v.benign, 2)} / ${F(v.malignant, 2)}</td><td class="n">${F(v.fp * 100, 0)}%</td><td class="n">${F(v.stu_dice, 3)}</td></tr>`; }).join("")}</tbody></table></div></div>
+      <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>So sánh (Wilcoxon, Dice từng ảnh)</th><th>Tập</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${BU.tests.map((t) => `<tr><td>${esc(t.a)} vs ${esc(t.b)}</td><td>${t.set}</td><td class="n">${t.diff >= 0 ? "+" : "−"}${F(Math.abs(t.diff), 3)}</td><td class="n">${t.wins}/${t.n}</td><td class="n ${t.p < 0.05 ? "best" : ""}">${F(t.p, 3)}</td></tr>`).join("")}</tbody></table></div></div>` : "";
     const realCard = RL ? `<div class="card real-card"><div class="card-h"><h3>Ảnh siêu âm thật – ${esc(RL.dataset.name)} (${RL.dataset.n} ảnh)</h3><span class="badge ok">Dữ liệu thật</span></div>
       <p class="muted sm" style="margin:0 0 12px">${esc(RL.dataset.ref)}. R1: mô hình chỉ học trên ảnh mô phỏng, chạy thẳng trên ảnh thật. R2: kiểm định chéo 5 phần, tinh chỉnh trên 4/5 số ảnh thật và đánh giá trên phần còn lại; ${RL.setup.seeds.length} hạt ngẫu nhiên, ${RL.setup.epochs} epoch.</p>
       <div class="grid g2" style="margin:0"><div><h4>R1 – Chưa từng thấy ảnh thật</h4><div id="xr1" class="chart"></div></div><div><h4>R2 – Sau khi tinh chỉnh trên ảnh thật</h4><div id="xr2" class="chart"></div></div></div>
       <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>So sánh (Wilcoxon, Dice từng ảnh)</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${RL.tests.map((t) => `<tr><td>${esc(t.a)} vs ${esc(t.b)}</td><td class="n">${t.diff >= 0 ? "+" : "−"}${F(Math.abs(t.diff), 3)}</td><td class="n">${t.wins}/${t.n}</td><td class="n ${t.p < 0.05 ? "best" : ""}">${F(t.p, 3)}</td></tr>`).join("")}</tbody></table></div>
       <p class="muted sm">M4-R: M4 với công thức huấn luyện cải tiến (giám sát sâu giảm dần, tăng cường đặc thù siêu âm, AdamW + cosine, lật ngang khi suy luận). M1-R: U-Net với cùng công thức, để tách tác dụng của công thức khỏi kiến trúc. p &lt; 0,05 được tô xanh. Có 8 phép so sánh trên cùng 42 ảnh: nếu hiệu chỉnh Bonferroni (ngưỡng 0,006) thì chưa phép nào đạt, nên cần thêm ảnh thật để khẳng định.</p></div>` : "";
-    box.innerHTML = realCard + `<div class="card"><div class="card-h"><h3>Bối cảnh</h3><span class="badge warn">${esc(R.meta.data_note)}</span></div><p class="muted sm" style="margin:0 0 14px">${esc(R.meta.setup)}</p>
+    box.innerHTML = busiCard + realCard + `<div class="card"><div class="card-h"><h3>Bối cảnh</h3><span class="badge warn">${esc(R.meta.data_note)}</span></div><p class="muted sm" style="margin:0 0 14px">${esc(R.meta.setup)}</p>
       <div class="kpis small" style="margin:0">${kpi("Ảnh huấn luyện", d.train.n)}${kpi("Kiểm định", d.val.n)}${kpi("Kiểm tra (A)", d.test.n)}${kpi("Thiết bị khác (B)", d.ext.n)}${kpi("Kích thước", `${R.config.size}×${R.config.size}`)}${kpi("Epoch tối đa", R.config.epochs)}</div></div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>E1 – So sánh bốn mô hình</h3></div><div id="x1" class="chart"></div><p class="muted sm">Trung bình ± độ lệch chuẩn qua 3 hạt. Dice chênh nhau không quá 0,002; kiểm định Wilcoxon không có ý nghĩa.</p></div>
       <div class="card"><div class="card-h"><h3>Kiểm định Wilcoxon (Dice từng ảnh)</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>So sánh</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${R.wilcoxon.map((w) => `<tr><td>${w.a} vs ${w.b}</td><td class="n">${w.mean_diff >= 0 ? "+" : ""}${F(w.mean_diff, 4)}</td><td class="n">${w.wins}/${w.n}</td><td class="n">${F(w.p, 3)}</td></tr>`).join("")}</tbody></table></div><h4 style="margin-top:16px">HD95 (điểm ảnh)</h4><div id="x1b" class="chart"></div></div>
@@ -746,6 +778,10 @@
       <div class="card"><div class="card-h"><h3>E6 – Chi phí tính toán</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mô hình</th><th class="n">Tham số</th><th class="n">GFLOPs</th><th class="n">ms/ảnh</th><th class="n">Huấn luyện</th></tr></thead><tbody>${R.efficiency.filter((e) => MK.includes(e.key)).map((e) => `<tr><td>${mtag(e.key)} ${esc(e.name)}</td><td class="n">${e.params.toLocaleString("vi-VN")}</td><td class="n">${F(e.gflops, 3)}</td><td class="n">${F(e.ms, 1)}</td><td class="n">${R.train_info[e.key] ? F(R.train_info[e.key].time[0] / 60, 1) + " ph" : "–"}</td></tr>`).join("")}</tbody></table></div></div></div>
       ${R.tables.map((t) => `<div class="card"><div class="card-h"><h3>${esc(t.title)}</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr>${t.columns.map((c, i) => `<th class="${i ? "n" : ""}">${esc(c)}</th>`).join("")}</tr></thead><tbody>${t.rows.map((r, ri) => `<tr>${r.map((c, i) => `<td class="${i ? "n" : ""} ${t.best === ri ? "best" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`).join("")}
       <div class="card"><div class="card-h"><h3>Hình trong báo cáo</h3></div><div class="figs">${R.figures.map((f) => `<figure><img src="/results/figures/${f.file}" alt="${esc(f.title)}" loading="lazy"><figcaption>${esc(f.title)}</figcaption></figure>`).join("")}</div></div>`;
+    if (BU) {
+      const all = BK.flatMap((k) => [BU.summary[k].test_dice, BU.summary[k].stu_dice]), lo = Math.max(0, Math.floor(Math.min(...all) * 20) / 20 - 0.05), hi = Math.min(1, Math.ceil(Math.max(...all) * 20) / 20 + 0.02);
+      Charts.dot($("#xb1"), { categories: BK, series: [{ name: "BUSI (kiểm tra)", values: BK.map((k) => BU.summary[k].test_dice), color: Charts.color(0) }, { name: "STU (ngoài miền)", values: BK.map((k) => BU.summary[k].stu_dice), color: Charts.color(1) }], xMin: lo, xMax: hi, ml: 60, rowH: 34, offset: true, valueLabel: false, dotLabels: true, tickDec: 2, xTitle: "Dice" });
+    }
     if (RL) {
       const z = ["M1", "M2", "M3", "M4"].filter((k) => RL.zero_shot[k]);
       Charts.dot($("#xr1"), { categories: z, series: [{ name: "Dice", values: z.map((k) => RL.zero_shot[k].mean), colors: z.map((k) => (k === "M4" ? Charts.color(0) : Charts.color(7))) }], xMin: 0.3, xMax: 0.8, ml: 50, rowH: 32, legend: false, tickDec: 1, xTitle: "Dice trung bình trên 42 ảnh" });
@@ -766,7 +802,7 @@
     if (!S.models.length) await loadModels();
     if (!S.R) S.R = await api("/api/results").catch(() => null);
     const R = S.R || {};
-    $("#modelBox").innerHTML = `<div class="card"><div class="card-h"><h3>Các mô hình trong hệ thống</h3><span class="muted sm">${S.models.length} mô hình</span></div><div class="mcards">${S.models.map((m) => `<div class="mcard" style="--c:${mcol(m.id)}"><h4>${m.id} · ${esc(m.name)}</h4><p>${esc(m.desc)}</p><dl><dt>Kiến trúc</dt><dd>${m.type}</dd><dt>Tham số</dt><dd>${m.params ? m.params.toLocaleString("vi-VN") : "–"}</dd><dt>Đầu vào</dt><dd>${m.size}×${m.size}, ${m.base} kênh</dd><dt>Dice kiểm định</dt><dd>${F(m.val_dice, 3)}</dd><dt>Dice kiểm tra A / B</dt><dd>${F(m.eval.test, 3)} / ${F(m.eval.ext, 3)}</dd><dt>Nguồn</dt><dd>${m.source === "builtin" ? "đồ án" : m.source === "real" ? "tinh chỉnh trên ảnh thật" : "huấn luyện web"}</dd></dl></div>`).join("")}</div></div>
+    $("#modelBox").innerHTML = `<div class="card"><div class="card-h"><h3>Các mô hình trong hệ thống</h3><span class="muted sm">${S.models.length} mô hình</span></div><div class="mcards">${S.models.map((m) => `<div class="mcard" style="--c:${mcol(m.id)}"><h4>${m.id} · ${esc(m.name)}</h4><p>${esc(m.desc)}</p><dl><dt>Kiến trúc</dt><dd>${m.type}</dd><dt>Tham số</dt><dd>${m.params ? m.params.toLocaleString("vi-VN") : "–"}</dd><dt>Đầu vào</dt><dd>${m.size}×${m.size}, ${m.base} kênh</dd><dt>Dice kiểm định</dt><dd>${F(m.val_dice, 3)}</dd><dt>Dice mô phỏng A / B</dt><dd>${F(m.eval.test, 3)} / ${F(m.eval.ext, 3)}</dd><dt>Dice BUSI / STU</dt><dd>${F(m.eval.busi, 3)} / ${F(m.eval.real, 3)}</dd><dt>Nguồn</dt><dd>${m.source === "builtin" ? "đồ án" : m.source === "real" ? "tinh chỉnh trên ảnh thật" : "huấn luyện web"}</dd></dl></div>`).join("")}</div></div>
       <div class="card"><div class="card-h"><h3>Luồng xử lý một ảnh</h3></div><div class="pipe">${["Ảnh xám", "Đệm viền giữ tỉ lệ", "Thu nhỏ, chuẩn hóa [0, 1]", "U-Net + Attention", "Sigmoid → xác suất", "Ngưỡng", "Vùng liên thông lớn nhất", "Trả về kích thước gốc", "Chỉ số & lưu CSDL"].map((s) => `<span>${s}</span>`).join(icon("arrow"))}</div></div>
       <div class="card figw"><div class="card-h"><h3>Kiến trúc mô hình đề xuất M4</h3></div><img src="/results/figures/fig_architecture.png" alt="Kiến trúc M4"><p class="muted sm">Attention Gate trên 4 kết nối tắt, CBAM ở tầng đáy, đầu ra phụ cho giám sát sâu (chỉ dùng khi huấn luyện). Số kênh trên hình theo cấu hình 256×256; trọng số đi kèm dùng ${S.models[0] ? S.models[0].size : 96}×${S.models[0] ? S.models[0].size : 96}, ${S.models[0] ? S.models[0].base : 8} kênh cơ sở.</p></div>
       <div class="grid g2"><div class="card figw"><div class="card-h"><h3>Attention Gate</h3></div><img src="/results/figures/fig_attention_gate.png" alt="Attention Gate"><p class="sm">α = σ(ψ(ReLU(W<sub>x</sub>x + W<sub>g</sub>g))), x̂ = α·x: tín hiệu g từ tầng sâu quyết định vùng nào của đặc trưng kết nối tắt x được giữ lại.</p></div>
@@ -781,8 +817,8 @@
     const key = box.id === "anStrip" ? "an" : "ab", sp = S.srcSplit[key];
     box.innerHTML = Array(10).fill('<button class="skeleton" disabled></button>').join("");
     try {
-      const j = await api(`/api/images?split=${sp}&per=14&page=${1 + Math.floor(Math.random() * (sp === "real" ? 3 : 5))}`);
-      if (!j.rows.length && sp === "real") { box.innerHTML = '<p class="muted sm">Chưa có ảnh thật trong CSDL. Chạy <code>python manage.py import-stu</code> (cần mạng) rồi tải lại trang.</p>'; return []; }
+      const j = await api(`/api/images?split=${sp}&per=14&page=${1 + Math.floor(Math.random() * (sp === "test" ? 5 : 3))}`);
+      if (!j.rows.length && sp !== "test") { box.innerHTML = '<p class="muted sm">Chưa có ảnh này trong CSDL. STU: <code>python manage.py import-stu</code>; BUSI: giải nén vào <code>data/external/Dataset_BUSI_with_GT</code> rồi <code>python manage.py import-busi</code>.</p>'; return []; }
       const rows = j.rows.filter((r) => r.kind !== "normal").slice(0, 10);
       rows.forEach((r) => { if (r.kind === "unknown") r.kind = "real"; });
       box.innerHTML = rows.map((r) => `<button data-id="${r.id}" title="${esc(KIND[r.kind] || r.kind)} · ${esc(r.filename.split("/").pop())}"><img src="${r.url}" alt="" loading="lazy"><i class="kd-${r.kind}"></i></button>`).join("");
@@ -793,7 +829,7 @@
   $$(".src-sw").forEach((sw) => $$("button", sw).forEach((b) => b.addEventListener("click", () => {
     $$("button", sw).forEach((x) => x.classList.toggle("on", x === b)); const k = sw.dataset.for; S.srcSplit[k] = b.dataset.split;
     const pick = k === "an" ? (inp) => { S.an.input = inp; anRun(); } : abPick;
-    if (k === "an") { const want = b.dataset.split === "real" && S.models.some((m) => m.id === "M4-STU") ? "M4-STU" : "M4"; $("#anModel").value = want; anFlags(); }
+    if (k === "an") { const want = b.dataset.split !== "test" && S.models.some((m) => m.id === "M4-BUSI") ? "M4-BUSI" : b.dataset.split === "real" && S.models.some((m) => m.id === "M4-STU") ? "M4-STU" : "M4"; $("#anModel").value = want; anFlags(); }
     strip($(k === "an" ? "#anStrip" : "#abStrip"), pick).then((rows) => { if (rows.length) $(k === "an" ? "#anStrip button" : "#abStrip button").click(); });
   })));
   const inputForm = (inp) => { const f = new FormData(); if (inp.id) f.append("image_id", inp.id); else f.append("image", inp.file, inp.file.name); return f; };

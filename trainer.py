@@ -133,18 +133,25 @@ def forget(model_id):
 
 
 def evaluate(model_id, split="test", dataset=None):
-    dataset = dataset or ("stu" if split == "real" else "sample")
+    dataset = dataset or {"real": "stu", "busi": "busi"}.get(split, "sample")
+    split = "busi_test" if split == "busi" else split
     model, ck = load_model(model_id)
     X, Y, K, rows = T.load_split(split, ck["size"], dataset)
     if len(X) == 0:
         raise ValueError("Tập dữ liệu rỗng.")
     t0 = time.perf_counter()
-    P = predict(model, X) > 0.5
+    prob = predict(model, X)
+    if ck.get("tta"):                          # mô hình công thức R: lật ngang khi suy luận
+        prob = (prob + predict(model, X[:, :, ::-1].copy())[:, :, ::-1]) / 2
+    P = prob > 0.5
     ms = (time.perf_counter() - t0) * 1000 / len(X)
     per = []
-    for p, g, k, r in zip(P, Y > 0, K, rows):
+    pp = ck.get("post")
+    for i, (p, g, k, r) in enumerate(zip(P, Y > 0, K, rows)):
         if p.any():
             p = MT.largest_component(p)
+            if pp and (p.mean() < pp.get("min_area", 0) or prob[i][p].max() < pp.get("min_peak", 0)):
+                p = np.zeros_like(p)
         d = 1.0 if (not p.any() and not g.any()) else MT.dice(p, g)
         per.append(dict(id=r["id"], kind=k, dice=round(float(d), 4), iou=round(float(MT.iou(p, g)) if (p.any() or g.any()) else 1.0, 4),
                         precision=float(MT.precision(p, g)) if p.any() else None, recall=float(MT.recall(p, g)) if g.any() else None,
@@ -158,6 +165,8 @@ def evaluate(model_id, split="test", dataset=None):
                hd95=round(mean(les, "hd95"), 3) if mean(les, "hd95") is not None else None,
                fp_rate=round(float(np.mean([x["fp"] for x in nor])), 4) if nor else None, ms=round(ms, 2),
                by_kind=by_kind, per_image=[dict(id=x["id"], kind=x["kind"], dice=x["dice"]) for x in per], created_at=db.now())
+    split = "busi" if split == "busi_test" else split
+    res["split"] = split
     db.x("DELETE FROM evals WHERE model_id=? AND split=?", (model_id, split))
     db.insert("evals", res)
     return res

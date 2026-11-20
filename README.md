@@ -19,7 +19,8 @@ Mã nguồn, phần mềm **SonoSeg** và tài liệu của đồ án tốt nghi
   M4 được so sánh với U-Net (M1), Attention U-Net (M2) và U-Net + CBAM (M3), kèm ma trận ablation 2×2×2.
 - **Thực nghiệm trên hai loại dữ liệu:**
   - ảnh siêu âm **mô phỏng** (thí nghiệm E1–E6, 880 ảnh);
-  - ảnh siêu âm **thật** STU-Hospital (thí nghiệm R1–R2, 42 ảnh, mặt nạ do bác sĩ vẽ).
+  - ảnh siêu âm **thật** STU-Hospital (thí nghiệm R1–R2, 42 ảnh, mặt nạ do bác sĩ vẽ);
+  - ảnh siêu âm **thật** BUSI (thí nghiệm R3, 682 ảnh sau khi lọc trùng).
 - **Phần mềm web SonoSeg:** Flask + PyTorch, chạy trên CPU, không cần GPU. Gồm các trang:
   - phân đoạn, có kích thước, vị trí, độ tin cậy và phiếu kết quả PDF;
   - "Bên trong M4": xem từng bước CBAM, Attention Gate và giám sát sâu;
@@ -63,7 +64,7 @@ Diễn giải trung thực:
 - Sau khi tinh chỉnh, M4 nhỉnh hơn U-Net một chút.
 - **Tiền huấn luyện trên ảnh mô phỏng có ích rõ.**
 - Công thức cải tiến R giúp **cả M1 lẫn M4** ngang nhau, tức phần lợi nằm ở cách huấn luyện, không ở kiến trúc.
-- Có 8 phép so sánh trên cùng 42 ảnh. Nếu hiệu chỉnh Bonferroni (ngưỡng 0,006), chưa phép nào đạt ý nghĩa thống kê. Cần thêm dữ liệu thật (BUSI, BUS-BRA, …) để khẳng định.
+- Có 8 phép so sánh trên cùng 42 ảnh. Nếu hiệu chỉnh Bonferroni (ngưỡng 0,006), chưa phép nào đạt ý nghĩa thống kê. Vì vậy đồ án kiểm chứng tiếp trên BUSI (R3, bên dưới).
 
 Công thức cải tiến **R** gồm:
 - giám sát sâu với trọng số giảm dần về 0;
@@ -74,6 +75,36 @@ Công thức cải tiến **R** gồm:
 Trọng số **M4-STU** (M4-R huấn luyện trên cả 42 ảnh) có sẵn trong `weights/real/` và chọn được trên web.
 
 Chạy lại các thí nghiệm này: `python manage.py import-stu`, sau đó `python real_experiments.py`. Mất khoảng 55 phút trên CPU 2 nhân.
+
+## Kết quả trên BUSI (R3, 682 ảnh)
+
+BUSI (Al-Dhabyani et al., *Data in Brief* 28, 2020) gồm ảnh lành tính, ác tính và bình thường. Sau khi lọc ảnh trùng bằng average-hash còn 682 ảnh, chia phân tầng 476 / 68 / 138 (huấn luyện / kiểm định / kiểm tra, hạt 0). Mọi mô hình khởi tạo từ trọng số mô phỏng, huấn luyện 50 epoch ở 96×96, chọn epoch theo Dice kiểm định. Cùng mô hình đó được chạy thẳng trên 42 ảnh STU (ngoài miền, chưa học).
+
+| Cấu hình | Dice BUSI | HD95 (px) | Báo sai trên ảnh bình thường | Dice STU (ngoài miền) |
+|---|---|---|---|---|
+| M1 U-Net | 0,777 | 9,7 | 91% | 0,836 |
+| M2 Attention U-Net | 0,786 | 8,5 | 100% | 0,826 |
+| M3 U-Net + CBAM | 0,771 | 9,7 | 100% | 0,832 |
+| M4 đề xuất | 0,773 | 9,1 | 50% | 0,797 |
+| M1 + công thức R | 0,784 | 8,4 | 86% | 0,844 |
+| **M4 + công thức R** | **0,788** | 8,9 | 82% | **0,846** |
+
+- M4-R cao hơn U-Net trên BUSI: Δ = +0,011, Wilcoxon p = 0,018 (70/116 ảnh có khối u tốt hơn).
+- M4 không có công thức R thấp hơn U-Net một chút (Δ = −0,005, p = 0,037). Lợi ích chủ yếu đến từ cách huấn luyện; M4-R so với M1-R chỉ nhỉnh +0,005 (p = 0,089).
+- Tỷ lệ báo sai trên ảnh bình thường cao.
+
+**Trọng số M4-BUSI trên web.** Huấn luyện lại M4-R trên 476 ảnh, 70 epoch, ở 128×128. Bản này được chọn thay bản 96×96 vì Dice trên tập kiểm định cao hơn (0,780 so với 0,758). Bộ lọc hậu xử lý cũng được chọn trên tập kiểm định: ngưỡng 0,6, bỏ vùng có xác suất đỉnh dưới 0,95.
+
+| M4-BUSI trên 138 ảnh kiểm tra | Không lọc | Có lọc (mặc định trên web) |
+|---|---|---|
+| Dice trên ảnh có khối u | 0,787 | 0,786 |
+| Báo sai trên 22 ảnh bình thường | 100% | 73% |
+| Số ảnh có khối u bị bỏ sót | 4/116 | 6/116 |
+| Dice STU (ngoài miền) | 0,856 | 0,842 |
+
+Bộ lọc là một sự đánh đổi: ít báo nhầm hơn nhưng bỏ sót nhiều hơn một chút. Báo nhầm trên ảnh bình thường vẫn là điểm yếu chính, vì ảnh bình thường chỉ chiếm khoảng 1/6 bộ BUSI. Trên web có thể tắt bộ lọc bằng công tắc "Chỉ giữ vùng liên thông lớn nhất" ở trang Phân đoạn.
+
+Chạy lại: giải nén BUSI vào `data/external/Dataset_BUSI_with_GT`, rồi `python manage.py import-busi` và `python busi_experiments.py`. Mất khoảng 32 phút trên CPU 2 nhân. Lưu trọng số web: `BUSI_SIZE=128 python busi_experiments.py --final M4-R --epochs 70`, sau đó `BUSI_SIZE=128 python busi_experiments.py --tune weights/real/M4-BUSI-128.pt` và đổi tên thành `M4-BUSI.pt`.
 
 ## Chạy nhanh
 
@@ -95,7 +126,7 @@ Nếu không tải được ảnh thật lúc đầu, chạy `python manage.py i
 
 ```bash
 python manage.py import-stu                # 42 ảnh siêu âm thật (STU-Hospital)
-python manage.py import-busi <thư mục>     # BUSI (benign/, malignant/, normal/) nếu đã tải về
+python manage.py import-busi [thư mục]     # BUSI (benign/, malignant/, normal/) nếu đã tải về
 python -m pytest -q tests                  # 14 ca kiểm thử
 ```
 
@@ -106,15 +137,16 @@ python -m pytest -q tests                  # 14 ca kiểm thử
 | `models.py` | U-Net linh hoạt: M1–M4, các biến thể ablation; hàm `trace` ghi lại các bước trung gian |
 | `train.py`, `run_experiments.py`, `evaluate_all.py` | Thí nghiệm E1–E6 trên ảnh mô phỏng |
 | `real_experiments.py` | Thí nghiệm R1–R2 trên ảnh thật STU-Hospital |
+| `busi_experiments.py` | Thí nghiệm R3 trên BUSI; `--final` lưu M4-BUSI, `--tune` chọn hậu xử lý |
 | `data.py` | Bộ sinh ảnh siêu âm mô phỏng, tiền xử lý, tăng cường |
 | `metrics.py` | Dice, IoU, Precision, Recall, HD95, chỉ số hình thái |
 | `app.py`, `templates/`, `static/` | Máy chủ Flask và giao diện một trang (biểu đồ SVG tự viết) |
 | `db.py`, `dataset_tools.py`, `manage.py`, `trainer.py` | CSDL SQLite, nhập dữ liệu, huấn luyện nền |
 | `weights/final/` | M1–M4 (huấn luyện trên ảnh mô phỏng) |
 | `weights/ablation/` | 5 biến thể ablation (A3, A4, D1–D3) |
-| `weights/real/` | M4-STU (tinh chỉnh trên ảnh thật) |
+| `weights/real/` | M4-BUSI, M4-STU (huấn luyện trên ảnh thật) |
 | `data/sample/` | 420 ảnh mô phỏng kèm mặt nạ |
-| `results/` | Kết quả (`results.json`, `real_results.json`), hình, ảnh chụp giao diện |
+| `results/` | Kết quả (`results.json`, `real_results.json`, `busi_results.json`), hình, ảnh chụp giao diện |
 | `docs/` | Báo cáo, slide, đề cương |
 | [`DATASETS.md`](DATASETS.md) | Danh sách nguồn ảnh siêu âm vú thật (quốc tế và Việt Nam) |
 

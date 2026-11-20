@@ -2,7 +2,7 @@
 
   python manage.py init                 # tạo CSDL, sinh bộ ảnh mẫu, đánh giá ban đầu
   python manage.py rebuild-sample       # sinh lại bộ ảnh mẫu
-  python manage.py import-busi <thư mục> # nhập BUSI (benign/, malignant/, normal/) thành bộ dữ liệu 'busi'
+  python manage.py import-busi [thư mục]  # nhập BUSI (benign/, malignant/, normal/) – mặc định data/external/Dataset_BUSI_with_GT
   python manage.py import-stu           # tải và nhập 42 ảnh siêu âm vú THẬT (STU-Hospital) thành tập 'real'
   python manage.py stats                # thống kê CSDL
 """
@@ -21,7 +21,7 @@ def main(argv):
     elif cmd == "import-stu":
         T.import_stu()
     elif cmd == "import-busi":
-        T.import_folder(argv[2], dataset="busi")
+        T.import_busi(argv[2] if len(argv) > 2 else T.BUSI_DIR)
     db.init()
     for r in db.q("SELECT dataset, split, COUNT(*) n FROM images GROUP BY dataset, split ORDER BY dataset, split"):
         print(f"  {r['dataset']:8s} {r['split']:6s} {r['n']:5d}")
