@@ -1,0 +1,355 @@
+{
+ "note": "Số liệu trích từ bài báo gốc. Các nghiên cứu dùng cách chia tập, kích thước ảnh và cách tính Dice khác nhau, nên chỉ so sánh được về độ lớn, không so trực tiếp từng số.",
+ "medical": [
+  {
+   "fact": "Ung thư vú là ung thư phổ biến nhất ở nữ giới trên toàn cầu, khoảng 2,3 triệu ca mới năm 2022.",
+   "source": "Bray F. et al., Global cancer statistics 2022 (GLOBOCAN), CA Cancer J Clin 74(3):229–263, 2024",
+   "url": "https://doi.org/10.3322/caac.21834"
+  },
+  {
+   "fact": "Việt Nam năm 2022: 24.563 ca mắc mới (13,6% mọi ca ung thư; 28,9% ung thư ở nữ), khoảng 10.000 ca tử vong.",
+   "source": "IARC GLOBOCAN 2022; Quyết định 358/QĐ-BYT ngày 03/02/2026 của Bộ Y tế (Kế hoạch hành động quốc gia phòng chống ung thư vú và ung thư cổ tử cung)",
+   "url": "https://gco.iarc.fr/today"
+  },
+  {
+   "fact": "Hơn 60% người bệnh ung thư vú ở Việt Nam được phát hiện ở giai đoạn III–IV; phát hiện sớm cho tỷ lệ sống 5 năm rất cao.",
+   "source": "Bộ Y tế, hướng dẫn khám sàng lọc ung thư vú tại tuyến xã (VOV, 2026)",
+   "url": "https://vov.vn/xa-hoi/bo-y-te-huong-dan-quy-trinh-kham-sang-loc-ung-thu-vu-tai-tuyen-xa-post1322352.vov"
+  },
+  {
+   "fact": "Siêu âm bổ sung cho chụp nhũ ảnh giúp phát hiện thêm ung thư ở phụ nữ có mô vú dày; siêu âm rẻ, không bức xạ, phổ biến ở tuyến cơ sở nhưng phụ thuộc người đọc.",
+   "source": "Berg W.A. et al. (ACRIN 6666), JAMA 299(18):2151–2163, 2008",
+   "url": "https://doi.org/10.1001/jama.299.18.2151"
+  },
+  {
+   "fact": "Dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm; Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 có hiệu lực từ 01/01/2026 (chi tiết tại Nghị định 356/2025/NĐ-CP).",
+   "source": "Quốc hội, Luật 91/2025/QH15 ngày 26/6/2025",
+   "url": "https://thuvienphapluat.vn/van-ban/Bo-may-hanh-chinh/Luat-Bao-ve-du-lieu-ca-nhan-2025-so-91-2025-QH15-625628.aspx"
+  }
+ ],
+ "literature": [
+  {
+   "study": "AAU-net (Chen et al., IEEE TMI 2023)",
+   "data": "BUSI 780 ảnh, kiểm định chéo 4 phần",
+   "rows": [
+    [
+     "U-Net",
+     0.701
+    ],
+    [
+     "Attention U-Net",
+     0.68
+    ],
+    [
+     "UNet++",
+     0.716
+    ],
+    [
+     "AAU-net (đề xuất)",
+     0.775
+    ]
+   ],
+   "metric": "Dice",
+   "url": "https://arxiv.org/abs/2204.12077"
+  },
+  {
+   "study": "AAU-net (Chen et al., IEEE TMI 2023)",
+   "data": "Học trên Dataset B (UDIAT), kiểm tra ngoài trên 42 ảnh STU",
+   "rows": [
+    [
+     "U-Net",
+     0.714
+    ],
+    [
+     "Attention U-Net",
+     0.652
+    ],
+    [
+     "UNet++",
+     0.707
+    ],
+    [
+     "AAU-net (đề xuất)",
+     0.802
+    ]
+   ],
+   "metric": "Dice",
+   "url": "https://arxiv.org/abs/2204.12077"
+  },
+  {
+   "study": "UltraSeg (arXiv 2606.15176, 2026)",
+   "data": "Học trên BUSI, kiểm tra ngoài trên UDIAT (không tinh chỉnh)",
+   "rows": [
+    [
+     "U-Net",
+     0.645
+    ],
+    [
+     "Attention U-Net",
+     0.647
+    ],
+    [
+     "UNet++",
+     0.524
+    ],
+    [
+     "TransUNet",
+     0.758
+    ]
+   ],
+   "metric": "Dice",
+   "url": "https://arxiv.org/abs/2606.15176"
+  },
+  {
+   "study": "U-Bench (arXiv 2510.07041, 2025) – 100 biến thể U-Net",
+   "data": "BUSI, ảnh 256×256",
+   "rows": [
+    [
+     "U-Net",
+     0.656
+    ],
+    [
+     "Tốt nhất (RWKV-UNet)",
+     0.723
+    ]
+   ],
+   "metric": "IoU",
+   "url": "https://arxiv.org/abs/2510.07041"
+  },
+  {
+   "study": "BUS-Set (Thomas et al., Medical Physics 2023)",
+   "data": "Gộp 4 bộ công khai, 1.154 ảnh, 5 loại máy",
+   "rows": [
+    [
+     "Tốt nhất (Mask R-CNN)",
+     0.851
+    ]
+   ],
+   "metric": "Dice",
+   "url": "https://doi.org/10.1002/mp.16287"
+  }
+ ],
+ "ours_note": "Đồ án: Dice tính trên ảnh có khối u của tập kiểm tra (không gồm ảnh bình thường), ảnh 96×96, mô hình 0,5 triệu tham số, chạy CPU. Đã lọc ảnh trùng của BUSI trước khi chia tập.",
+ "datasets": [
+  {
+   "name": "BUSI",
+   "country": "Ai Cập",
+   "n": 780,
+   "mask": true,
+   "normal": true,
+   "license": "Công khai kèm bài báo Data in Brief",
+   "cite": "Al-Dhabyani et al., Data in Brief 28, 2020",
+   "used": true
+  },
+  {
+   "name": "BUS-BRA",
+   "country": "Brazil",
+   "n": 1875,
+   "mask": true,
+   "normal": false,
+   "license": "CC BY 4.0",
+   "cite": "Gómez-Flores et al., Medical Physics 51, 2024",
+   "used": true
+  },
+  {
+   "name": "BrEaST-Lesions-USG",
+   "country": "Ba Lan",
+   "n": 256,
+   "mask": true,
+   "normal": true,
+   "license": "CC BY 4.0",
+   "cite": "Pawłowska et al., Scientific Data 11, 2024",
+   "used": true
+  },
+  {
+   "name": "STU-Hospital",
+   "country": "Trung Quốc",
+   "n": 42,
+   "mask": true,
+   "normal": false,
+   "license": "Công khai trên GitHub",
+   "cite": "Zhuang et al., PLoS ONE 14(8), 2019",
+   "used": true
+  },
+  {
+   "name": "BUS-UCLM",
+   "country": "Tây Ban Nha",
+   "n": 683,
+   "mask": true,
+   "normal": true,
+   "license": "CC BY 4.0",
+   "cite": "Vallez et al., Scientific Data 12, 2025",
+   "used": false
+  },
+  {
+   "name": "BUSIS",
+   "country": "Trung Quốc",
+   "n": 562,
+   "mask": true,
+   "normal": false,
+   "license": "Theo yêu cầu",
+   "cite": "Zhang et al., Healthcare 10(4), 2022",
+   "used": false
+  },
+  {
+   "name": "UDIAT (Dataset B)",
+   "country": "Tây Ban Nha",
+   "n": 163,
+   "mask": true,
+   "normal": false,
+   "license": "Đăng ký với tác giả",
+   "cite": "Yap et al., IEEE JBHI 22(4), 2018",
+   "used": false
+  },
+  {
+   "name": "BUSI_WHU",
+   "country": "Trung Quốc",
+   "n": 927,
+   "mask": true,
+   "normal": false,
+   "license": "Mở (Mendeley)",
+   "cite": "Mendeley Data k6cpmwybk3",
+   "used": false
+  },
+  {
+   "name": "BUS_UC",
+   "country": "Pakistan",
+   "n": 811,
+   "mask": true,
+   "normal": false,
+   "license": "Mở (Mendeley)",
+   "cite": "Iqbal & Sharif, 2024",
+   "used": false
+  },
+  {
+   "name": "QAMEBI",
+   "country": "Iran",
+   "n": 232,
+   "mask": true,
+   "normal": false,
+   "license": "Mở",
+   "cite": "qamebi.com",
+   "used": false
+  },
+  {
+   "name": "HiSBreast (BV ĐK Cà Mau)",
+   "country": "Việt Nam",
+   "n": 972,
+   "mask": false,
+   "normal": true,
+   "license": "CC BY 4.0",
+   "cite": "Mendeley Data 5c723rpwz2 – không có mặt nạ",
+   "used": false
+  },
+  {
+   "name": "BUS-Large",
+   "country": "21 bộ, nhiều nước",
+   "n": 21000,
+   "mask": true,
+   "normal": true,
+   "license": "CC BY 4.0, truy cập có kiểm soát",
+   "cite": "Yang Z., KTH, 2026, doi:10.71775/kth.frfd6-ymw69",
+   "used": false
+  }
+ ],
+ "github": [
+  {
+   "repo": "ozan-oktay/Attention-Gated-Networks",
+   "stars": 2066,
+   "what": "Mã gốc Attention Gate (Oktay et al., 2018) – thành phần AG của M4"
+  },
+  {
+   "repo": "Jongchan/attention-module",
+   "stars": 2234,
+   "what": "Mã gốc CBAM (Woo et al., ECCV 2018) – thành phần CBAM của M4"
+  },
+  {
+   "repo": "CGPxy/AAU-net",
+   "stars": 99,
+   "what": "U-Net chú ý thích nghi cho siêu âm vú (BUSI, Dataset B, STU)"
+  },
+  {
+   "repo": "avakanski/Attention-Enriched-DL-Model-for-Breast-Tumor-Segmentation",
+   "stars": 45,
+   "what": "U-Net + chú ý theo bản đồ nổi bật (salient attention)"
+  },
+  {
+   "repo": "AyushRoy2001/DAUNet",
+   "stars": 6,
+   "what": "DAU-Net: Residual U-Net + PCBAM + Shifted-Window attention (PLoS ONE 2024)"
+  },
+  {
+   "repo": "corcor27/BUS-Set",
+   "stars": 27,
+   "what": "Benchmark gộp 4 bộ công khai, 9 kiến trúc"
+  },
+  {
+   "repo": "wgomezf/BUS-BRA",
+   "stars": 31,
+   "what": "Mã nguồn đi kèm bộ BUS-BRA"
+  },
+  {
+   "repo": "jeya-maria-jose/UNeXt-pytorch",
+   "stars": 572,
+   "what": "UNeXt – mạng nhẹ, thử trên BUSI"
+  },
+  {
+   "repo": "MIC-DKFZ/nnUNet",
+   "stars": 9060,
+   "what": "nnU-Net – chuẩn so sánh mạnh, tự cấu hình"
+  },
+  {
+   "repo": "Project-MONAI/MONAILabel",
+   "stars": 912,
+   "what": "Gán nhãn và suy luận ảnh y tế chạy cục bộ (máy chủ + 3D Slicer/OHIF)"
+  }
+ ],
+ "offline": {
+  "platform": [
+   [
+    "Máy chủ",
+    "Flask (Python) chạy tại 127.0.0.1:5000; không gửi dữ liệu ra ngoài"
+   ],
+   [
+    "Mô hình",
+    "PyTorch trên CPU; 0,5 triệu tham số, khoảng 15 ms/ảnh 96×96"
+   ],
+   [
+    "Cơ sở dữ liệu",
+    "SQLite (một tệp data/app.db): ảnh, mặt nạ, lần huấn luyện, kết quả đánh giá, lịch sử ca"
+   ],
+   [
+    "Giao diện",
+    "HTML + JavaScript thuần, biểu đồ SVG tự vẽ; không dùng CDN, phông hay thư viện tải từ Internet"
+   ],
+   [
+    "Cài đặt",
+    "run_web.bat (Windows) tự tạo môi trường ảo và mở trình duyệt; sau lần cài đầu không cần mạng"
+   ]
+  ],
+  "alternatives": [
+   [
+    "Streamlit / Gradio",
+    "Dựng nhanh giao diện demo; khó tùy biến, ít phù hợp quản lý ca và CSDL"
+   ],
+   [
+    "FastAPI + ONNX Runtime",
+    "Suy luận nhanh hơn, không cần PyTorch khi triển khai; nên dùng khi đóng gói bản cuối"
+   ],
+   [
+    "PyInstaller / Electron",
+    "Đóng gói thành ứng dụng máy tính một tệp cài đặt"
+   ],
+   [
+    "MONAI Label + 3D Slicer, OHIF + Orthanc",
+    "Hệ sinh thái mã nguồn mở cho bệnh viện: nhận ảnh DICOM từ PACS, gán nhãn, suy luận tại chỗ"
+   ]
+  ],
+  "uses": [
+   "Phòng khám, trạm y tế tuyến xã không có Internet ổn định: phân đoạn và đo kích thước khối u ngay trên máy",
+   "Bảo vệ dữ liệu bệnh nhân: ảnh không rời khỏi máy, phù hợp Luật Bảo vệ dữ liệu cá nhân 2025",
+   "Hỗ trợ bác sĩ trẻ đọc siêu âm và đào tạo: xem bản đồ attention, so sánh mô hình, phiếu kết quả",
+   "Nghiên cứu: gán nhãn, nhập bộ dữ liệu mới, huấn luyện lại và đánh giá ngay trên giao diện"
+  ]
+ }
+}

@@ -33,8 +33,8 @@ REGISTRY = {
                    note="1.064 bệnh nhân; chỉ lành tính và ác tính, không có ảnh bình thường."),
     "uclm": dict(name="BUS-UCLM (Tây Ban Nha)", cite="Vallez et al., Scientific Data, 2025", license="CC BY 4.0", published=683,
                  note="38 bệnh nhân: 419 bình thường / 174 lành / 90 ác. Nhiều ảnh cùng một người, bắt buộc chia theo bệnh nhân."),
-    "breast": dict(name="BrEaST-Lesions-USG (Ba Lan)", cite="Pawłowska et al., Scientific Data, 2024", license="CC BY 4.0", published=270,
-                   note="256 bệnh nhân, mặt nạ và mô tả BI-RADS."),
+    "breast": dict(name="BrEaST-Lesions-USG (Ba Lan)", cite="Pawłowska et al., Scientific Data 11, 2024", license="CC BY 4.0", published=256,
+                   note="256 bệnh nhân (154 lành / 98 ác / 4 bình thường), mặt nạ và mô tả BI-RADS."),
     "busis": dict(name="BUSIS", cite="Zhang et al., 2022", license="Theo yêu cầu", published=562, note=""),
     "udiat": dict(name="UDIAT / Dataset B (Tây Ban Nha)", cite="Yap et al., IEEE JBHI, 2018", license="Đăng ký với tác giả", published=163,
                   note="Nên giữ riêng làm tập kiểm tra ngoài (--holdout)."),
@@ -198,7 +198,7 @@ def _safe(s):
 
 
 def import_real(dataset, root, manifest=None, holdout=False, ratios=(0.7, 0.1, 0.2), seed=0, dup_tol=4,
-                require_mask=True, default_label=None, license=None, log=print):
+                require_mask=True, default_label=None, license=None, split_map=None, log=print):
     """Nhập một bộ ảnh siêu âm thật. Trả về dict thống kê (đã nhập, trùng lặp, bỏ qua vì thiếu mặt nạ/nhãn)."""
     db.init()
     if not os.path.isdir(root):
@@ -234,6 +234,9 @@ def import_real(dataset, root, manifest=None, holdout=False, ratios=(0.7, 0.1, 0
         ix.add(h, f"{dataset}/{os.path.basename(it['image'])}")
         keep.append((it, img, m, has, h))
     splits = ["ext"] * len(keep) if holdout else assign_splits([k[0] for k in keep], ratios, seed)
+    if split_map and not holdout:              # dùng đúng cách chia của thí nghiệm (vd. R4: results/mix_split.json)
+        # ảnh thí nghiệm đã loại vì gần trùng → để ở tập huấn luyện, không bao giờ nằm trong tập kiểm tra
+        splits = [split_map.get(os.path.basename(k[0]["image"]), "train") for k in keep]
     c = db.conn(); used = set()
     for (it, img, m, has, h), sp in zip(keep, splits):
         stem = _safe(os.path.splitext(os.path.basename(it["image"]))[0]); n_try = 1

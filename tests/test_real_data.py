@@ -104,3 +104,16 @@ def test_label_normalisation_and_errors():
         RD.import_real("sample", _tmp)
     with pytest.raises(ValueError):
         RD.import_real("x", os.path.join(_tmp, "khong_co"))
+
+
+def test_split_map_follows_experiment():
+    """Có split_map (vd. results/mix_split.json của R4): ảnh theo đúng tập của thí nghiệm, ảnh không có trong bảng → 'train'."""
+    root = os.path.join(_tmp, "mapped")
+    for i in range(6):
+        img, m, _ = D.make_sample(8000 + i, kind="benign", size=128)
+        _write(f"{root}/benign/b{i}.png", img); _write(f"{root}/benign/b{i}_mask.png", m * 255)
+    smap = {"b0.png": "test", "b1.png": "test", "b2.png": "val", "b3.png": "train", "b4.png": "train"}   # b5 vắng mặt
+    st = RD.import_real("mapped", root, split_map=smap, log=lambda *a: None)
+    assert st["imported"] == 6
+    got = {os.path.basename(r["filename"]): r["split"] for r in db.q("SELECT filename, split FROM images WHERE dataset='mapped'")}
+    assert got == {**smap, "b5.png": "train"}

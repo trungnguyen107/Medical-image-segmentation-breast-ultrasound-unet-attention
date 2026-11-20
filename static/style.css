@@ -731,3 +731,8 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .ibar2 b{font-variant-numeric:tabular-nums;font-size:13px;color:var(--text)}
 @media (prefers-reduced-motion:reduce){.chart-svg .c-line{stroke-dasharray:none!important;stroke-dashoffset:0!important}}
 .meter .bar i{background-image:none!important;background:var(--ok)!important}.meter.y .bar i{background:var(--warn)!important}.meter.r .bar i{background:var(--bad-2)!important}
+/* danh sách dẫn chứng – trang Đối chiếu nghiên cứu */
+.reflist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.reflist li{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:10px;padding:10px 14px}
+.reflist li p{margin:0 0 2px;line-height:1.5}
+.reflist li .sm{display:block}

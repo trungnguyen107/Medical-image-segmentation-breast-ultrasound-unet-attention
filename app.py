@@ -67,15 +67,19 @@ def list_models():
         out.append(dict(id=k, name=M.NAMES.get(ck["model"], k), type=ck["model"], source="builtin", size=ck["size"], base=ck["base"],
                         params=M.count_params(m), val_dice=round(float(ck["val_dice"]), 4), has_attention=bool(m.attention_gates()),
                         gflops=round(eff[k]["gflops"], 3) if k in eff else None, desc=DESC.get(k, ""), eval=evals.get(k, {})))
-    for f in sorted(glob.glob(os.path.join(ROOT, "weights", "real", "*-BUSI.pt"))) + sorted(glob.glob(os.path.join(ROOT, "weights", "real", "*-STU.pt"))):
+    real_w = [sorted(glob.glob(os.path.join(ROOT, "weights", "real", f"*-{t}.pt"))) for t in ("MIX", "BUSI", "STU")]
+    for f in sum(real_w, []):
         k = os.path.basename(f)[:-3]
         m, ck = trainer.load_model(k)
-        busi = k.endswith("-BUSI")
+        kind = k.rsplit("-", 1)[1]
         tta = " (công thức cải tiến R, lật ngang khi suy luận)" if ck.get("tta") else ""
-        desc = (f"Học trên tập huấn luyện BUSI (ảnh siêu âm thật, Ai Cập) từ trọng số {ck['model']}{tta}. Mô hình khuyến nghị cho ảnh thật."
-                if busi else f"Tinh chỉnh trên 42 ảnh siêu âm thật STU-Hospital từ trọng số {ck['model']}{tta}. "
-                             f"Dice kiểm định chéo 5 phần: {str(r(ck.get('val_dice'), 3)).replace('.', ',')}.")
-        out.append(dict(id=k, name=f"{M.NAMES.get(ck['model'], ck['model'])} · {'BUSI' if busi else 'ảnh thật STU'}", type=ck["model"],
+        desc = {"MIX": f"Học trên ảnh siêu âm thật gộp từ 3 bộ BUSI (Ai Cập), BUS-BRA (Brazil), BrEaST (Ba Lan) từ trọng số {ck['model']}{tta}. "
+                       "Mô hình khuyến nghị cho ảnh thật.",
+                "BUSI": f"Học trên tập huấn luyện BUSI (ảnh siêu âm thật, Ai Cập) từ trọng số {ck['model']}{tta}.",
+                "STU": f"Tinh chỉnh trên 42 ảnh siêu âm thật STU-Hospital từ trọng số {ck['model']}{tta}. "
+                       f"Dice kiểm định chéo 5 phần: {str(r(ck.get('val_dice'), 3)).replace('.', ',')}."}[kind]
+        label = {"MIX": "3 bộ ảnh thật", "BUSI": "BUSI", "STU": "ảnh thật STU"}[kind]
+        out.append(dict(id=k, name=f"{M.NAMES.get(ck['model'], ck['model'])} · {label}", type=ck["model"],
                         source="real", size=ck["size"], base=ck["base"], params=M.count_params(m), val_dice=r(ck.get("val_dice"), 4),
                         has_attention=bool(m.attention_gates()), gflops=None, desc=desc, eval=evals.get(k, {})))
     for row in db.q("SELECT * FROM runs WHERE status IN ('done','stopped') AND weights IS NOT NULL ORDER BY id"):
@@ -766,7 +770,7 @@ def api_runs_delete(rid):
 def api_evaluate():
     j = request.get_json(force=True, silent=True) or {}
     split = j.get("split", "test")
-    if split not in ("test", "ext", "val", "real", "busi"):
+    if split not in ("test", "ext", "val", "real", "busi", "mix"):
         raise ValueError("Tập đánh giá không hợp lệ.")
     ids = j.get("models") or [m["id"] for m in list_models()]
     if split == "real":                       # mô hình đã tinh chỉnh trên chính 42 ảnh thật: không đánh giá lại trên tập đó
@@ -845,6 +849,23 @@ def api_busi():
     return jsonify(j)
 
 
+@app.route("/api/mix")
+def api_mix():
+    p = os.path.join(RESULTS, "mix_results.json")
+    if not os.path.exists(p):
+        return jsonify({})
+    j = json.load(open(p, encoding="utf8"))
+    for r in j.get("runs", []):
+        r.pop("per", None)
+    return jsonify(j)
+
+
+@app.route("/api/related")
+def api_related():
+    p = os.path.join(RESULTS, "related.json")
+    return jsonify(json.load(open(p, encoding="utf8"))) if os.path.exists(p) else jsonify({})
+
+
 @app.route("/api/real")
 def api_real():
     p = os.path.join(RESULTS, "real_results.json")
@@ -883,6 +904,10 @@ def bootstrap(log=print):
         for m in list_models():
             if (m["id"], "busi") not in have and m["source"] in ("builtin", "real"):
                 trainer.evaluate(m["id"], "busi")
+    if db.q("SELECT COUNT(*) n FROM images WHERE dataset IN ('busbra','breast') AND split='test'", one=True)["n"]:
+        for m in list_models():
+            if (m["id"], "mix") not in have and m["source"] == "real" and not m["id"].endswith("-STU"):
+                trainer.evaluate(m["id"], "mix")
     if db.q("SELECT COUNT(*) n FROM images WHERE dataset='stu'", one=True)["n"]:
         for k in BUILTIN:
             if (k, "real") not in have and os.path.exists(os.path.join(WEIGHTS, k + ".pt")):

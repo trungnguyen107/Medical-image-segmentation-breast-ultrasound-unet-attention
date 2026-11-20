@@ -73,7 +73,8 @@
     data: ["Cơ sở dữ liệu ảnh", "Bộ ảnh mẫu kèm mặt nạ chuẩn và ảnh do bạn thêm"],
     train: ["Huấn luyện", "Huấn luyện mô hình trên bộ ảnh mẫu ngay trong trình duyệt"],
     eval: ["Đánh giá & so sánh", "So sánh các mô hình trên tập kiểm tra bằng bảng và biểu đồ"],
-    exp: ["Kết quả thực nghiệm", "Ảnh siêu âm thật (R1–R2) và thí nghiệm E1–E6 trên dữ liệu mô phỏng"],
+    exp: ["Kết quả thực nghiệm", "Ảnh siêu âm thật (R1–R4) và thí nghiệm E1–E6 trên dữ liệu mô phỏng"],
+    related: ["Đối chiếu nghiên cứu", "Bối cảnh y học, so sánh với công trình đã công bố, dữ liệu và nền tảng chạy offline"],
     model: ["Mô hình & phương pháp", "Kiến trúc U-Net, Attention Gate, CBAM và luồng xử lý"],
   };
   const RENDER = {};
@@ -165,16 +166,16 @@
       $("#dashKpi").innerHTML = stat(nImg, `ảnh trong CSDL · ${(byKind.benign || 0) + (byKind.malignant || 0)} có khối u`, "db") + stat(S.models.length, "mô hình sẵn sàng", "net") +
         stat(m4 ? F(m4.dice, 3) : "–", `Dice của M4${m4b ? " · thiết bị khác " + F(m4b.dice, 3) : ""}`, "chart") + stat(st.cases.n || 0, `ca đã phân đoạn${runsAll ? ` · ${runsAll} lần huấn luyện` : ""}`, "clock");
       const get = (id, sp) => (st.evals.find((e) => e.model_id === id && e.split === sp) || {});
-      const lb = S.models.filter((m) => m.source === "builtin" || /-BUSI$/.test(m.id)).map((m) => ({ m, a: get(m.id, "test"), b: get(m.id, "ext"), c: get(m.id, "real"), d: get(m.id, "busi") })).filter((x) => x.a.dice !== undefined || x.d.dice !== undefined);
+      const lb = S.models.filter((m) => m.source === "builtin" || /-(BUSI|MIX)$/.test(m.id)).map((m) => ({ m, a: get(m.id, "test"), b: get(m.id, "ext"), c: get(m.id, "real"), d: get(m.id, "busi"), e: get(m.id, "mix") })).filter((x) => x.a.dice !== undefined || x.d.dice !== undefined);
       const barc = (v, c) => v === undefined || v === null ? "–" : `<div class="ibar2"><span><i style="width:${Math.max(0, Math.min(1, v)) * 100}%"></i></span><b>${F(v, 3)}</b></div>`;
-      $("#dashModels").innerHTML = lb.length ? `<div class="tbl-wrap"><table class="tbl lead"><thead><tr><th>Mô hình</th><th>Mô phỏng (A)</th><th>Mô phỏng (B)</th>${lb.some((x) => x.d.dice !== undefined) ? "<th>BUSI thật</th>" : ""}${lb.some((x) => x.c.dice !== undefined) ? "<th>STU thật</th>" : ""}</tr></thead><tbody>` +
-        lb.map((x) => `<tr class="${x.m.id === "M4" ? "m4" : ""}"><td><div class="mn">${mtag(x.m.id)}<span>${esc(/-BUSI$/.test(x.m.id) ? "M4 học trên BUSI" : x.m.type === "M4" ? "Đề xuất" : x.m.name.replace(" (cơ sở)", ""))}</span></div></td><td>${barc(x.a.dice, Charts.color(0))}</td><td>${barc(x.b.dice, Charts.color(1))}</td>${lb.some((y) => y.d.dice !== undefined) ? `<td>${barc(x.d.dice, Charts.color(6))}</td>` : ""}${lb.some((y) => y.c.dice !== undefined) ? `<td>${barc(x.c.dice, Charts.color(2))}</td>` : ""}</tr>`).join("") + `</tbody></table></div><p class="muted sm" style="margin:10px 0 0">Dice trên ảnh có khối u. M1–M4 chỉ học ảnh mô phỏng nên điểm trên ảnh thật thấp; mô hình học trên BUSI mới là mô hình dùng cho ảnh thật (STU là bệnh viện khác, chưa từng học).</p>`
+      $("#dashModels").innerHTML = lb.length ? `<div class="tbl-wrap"><table class="tbl lead"><thead><tr><th>Mô hình</th><th>Mô phỏng (A)</th><th>Mô phỏng (B)</th>${lb.some((x) => x.d.dice !== undefined) ? "<th>BUSI thật</th>" : ""}${lb.some((x) => x.e.dice !== undefined) ? "<th>3 bộ thật</th>" : ""}${lb.some((x) => x.c.dice !== undefined) ? "<th>STU thật</th>" : ""}</tr></thead><tbody>` +
+        lb.map((x) => `<tr class="${x.m.id === "M4" ? "m4" : ""}"><td><div class="mn">${mtag(x.m.id)}<span>${esc(/-MIX$/.test(x.m.id) ? "M4 học trên 3 bộ ảnh thật" : /-BUSI$/.test(x.m.id) ? "M4 học trên BUSI" : x.m.type === "M4" ? "Đề xuất" : x.m.name.replace(" (cơ sở)", ""))}</span></div></td><td>${barc(x.a.dice, Charts.color(0))}</td><td>${barc(x.b.dice, Charts.color(1))}</td>${lb.some((y) => y.d.dice !== undefined) ? `<td>${barc(x.d.dice, Charts.color(6))}</td>` : ""}${lb.some((y) => y.e.dice !== undefined) ? `<td>${barc(x.e.dice, Charts.color(4))}</td>` : ""}${lb.some((y) => y.c.dice !== undefined) ? `<td>${barc(x.c.dice, Charts.color(2))}</td>` : ""}</tr>`).join("") + `</tbody></table></div><p class="muted sm" style="margin:10px 0 0">Dice trên ảnh có khối u. M1–M4 chỉ học ảnh mô phỏng nên điểm trên ảnh thật thấp; mô hình học trên ảnh thật (M4-MIX, M4-BUSI) mới là mô hình dùng cho ảnh thật (STU là bệnh viện khác, chưa từng học).</p>`
         : '<div class="empty"><p>Chưa có kết quả đánh giá.</p></div>';
       $("#dashRecent").innerHTML = st.recent.length ? st.recent.slice(0, 4).map((c) => `<div class="rc" data-go="history"><img src="/data/${c.thumb}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noimg',textContent:'—'}))"><div><b title="${esc(c.image_label)}">${esc(c.image_label)}</b><span>${c.model_id} · ${c.dice !== null ? "Dice " + F(c.dice, 3) : F(c.area_ratio, 2) + "% diện tích"}</span></div></div>`).join("")
         : `<div class="empty"><svg><use href="#i-clock"/></svg><p>Chưa có ca nào. Bấm <b>Chạy thử ngay</b> để phân đoạn ảnh đầu tiên.</p></div>`;
       heroArt();
       $$("#dashKpi .st b").forEach(countUp);
-      const bB = st.evals.filter((e) => e.split === "busi" && /-BUSI$/.test(e.model_id)).sort((x, y) => y.dice - x.dice)[0], rl = st.evals.find((e) => e.model_id === "M4" && e.split === "real");
+      const bB = st.evals.filter((e) => e.split === "busi" && /-(BUSI|MIX)$/.test(e.model_id)).sort((x, y) => y.dice - x.dice)[0], rl = st.evals.find((e) => e.model_id === "M4" && e.split === "real");
       $("#heroChips").innerHTML = [bB ? `Dice ${esc(bB.model_id)} trên BUSI <b>${F(bB.dice, 3)}</b>` : null, rl ? `Ảnh thật chưa học <b>${F(rl.dice, 3)}</b>` : null, `Suy luận <b>~15 ms</b> trên CPU`, `Tham số <b>0,50 triệu</b>`].filter(Boolean).map((x) => `<span>${x}</span>`).join("");
     } catch (e) { toast(e.message, "err"); }
   };
@@ -794,7 +795,17 @@
       <div class="grid g2" style="margin:0"><div><h4>R1 – Chưa từng thấy ảnh thật</h4><div id="xr1" class="chart"></div></div><div><h4>R2 – Sau khi tinh chỉnh trên ảnh thật</h4><div id="xr2" class="chart"></div></div></div>
       <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>So sánh (Wilcoxon, Dice từng ảnh)</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${RL.tests.map((t) => `<tr><td>${esc(t.a)} vs ${esc(t.b)}</td><td class="n">${t.diff >= 0 ? "+" : "−"}${F(Math.abs(t.diff), 3)}</td><td class="n">${t.wins}/${t.n}</td><td class="n ${t.p < 0.05 ? "best" : ""}">${F(t.p, 3)}</td></tr>`).join("")}</tbody></table></div>
       <p class="muted sm">M4-R: M4 với công thức huấn luyện cải tiến (giám sát sâu giảm dần, tăng cường đặc thù siêu âm, AdamW + cosine, lật ngang khi suy luận). M1-R: U-Net với cùng công thức, để tách tác dụng của công thức khỏi kiến trúc. p &lt; 0,05 được tô xanh. Có 8 phép so sánh trên cùng 42 ảnh: nếu hiệu chỉnh Bonferroni (ngưỡng 0,006) thì chưa phép nào đạt, nên cần thêm ảnh thật để khẳng định.</p></div>` : "";
-    box.innerHTML = busiCard + realCard + `<div class="card"><div class="card-h"><h3>Bối cảnh</h3><span class="badge warn">${esc(R.meta.data_note)}</span></div><p class="muted sm" style="margin:0 0 14px">${esc(R.meta.setup)}</p>
+    if (S.mix === undefined) S.mix = await api("/api/mix").catch(() => ({}));
+    const MX = S.mix && S.mix.runs && S.mix.runs.length ? S.mix : null;
+    const MXK = MX ? ["M1-R", "M2-R", "M3-R", "M4-R", "M4-R·BUSI"].filter((k) => MX.runs.some((r) => r.name === k)) : [];
+    const mrun = (k) => MX.runs.find((r) => r.name === k);
+    const DS = [["busi", "BUSI"], ["busbra", "BUS-BRA"], ["breast", "BrEaST"], ["all", "Gộp 3 bộ"], ["stu", "STU (ngoài miền)"]];
+    const mixCard = MX ? `<div class="card real-card"><div class="card-h"><h3>R4 – Gộp 3 bộ ảnh thật: ${MX.dataset.busi.n + MX.dataset.busbra.n + MX.dataset.breast.n} ảnh từ Ai Cập, Brazil, Ba Lan</h3><span class="badge ok">Cải thiện dữ liệu</span></div>
+      <p class="muted sm" style="margin:0 0 12px">BUSI ${MX.dataset.busi.n} · BUS-BRA ${MX.dataset.busbra.n} (${MX.dataset.busbra.patients} bệnh nhân, chia theo bệnh nhân) · BrEaST ${MX.dataset.breast.n} ảnh; loại ${MX.dataset.busbra.dup_removed + MX.dataset.breast.dup_removed} ảnh gần trùng. Huấn luyện ${MX.dataset.busi.train + MX.dataset.busbra.train + MX.dataset.breast.train} ảnh, kiểm tra ${MX.dataset.busi.test + MX.dataset.busbra.test + MX.dataset.breast.test} ảnh; mọi mô hình dùng công thức R, ${MX.setup.size}×${MX.setup.size}, ${MX.setup.epochs} epoch. M4-R·BUSI: cùng M4-R nhưng chỉ học ${MX.dataset.busi.train} ảnh BUSI (R3) – để đo tác dụng của việc thêm dữ liệu.</p>
+      <div class="grid g2" style="margin:0"><div><h4>Dice trên tập kiểm tra gộp và trên STU</h4><div id="xm1" class="chart"></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mô hình</th>${DS.map(([, n]) => `<th class="n">${n}</th>`).join("")}</tr></thead><tbody>${MXK.map((k) => `<tr class="${k === "M4-R" ? "m4" : ""}"><td><b>${esc(k)}</b></td>${DS.map(([d]) => `<td class="n">${F(mrun(k).test[d].dice, 3)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>
+      <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>So sánh (Wilcoxon, Dice từng ảnh)</th><th>Tập</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${MX.tests.filter((t) => t.set === "all" || t.set === "stu").map((t) => `<tr><td>${esc(t.a)} vs ${esc(t.b)}</td><td>${t.set === "all" ? "gộp" : "STU"}</td><td class="n">${t.diff >= 0 ? "+" : "−"}${F(Math.abs(t.diff), 3)}</td><td class="n">${t.wins}/${t.n}</td><td class="n ${t.p < 0.05 ? "best" : ""}">${F(t.p, 3)}</td></tr>`).join("")}</tbody></table></div></div>` : "";
+    box.innerHTML = mixCard + busiCard + realCard + `<div class="card"><div class="card-h"><h3>Bối cảnh</h3><span class="badge warn">${esc(R.meta.data_note)}</span></div><p class="muted sm" style="margin:0 0 14px">${esc(R.meta.setup)}</p>
       <div class="kpis small" style="margin:0">${kpi("Ảnh huấn luyện", d.train.n)}${kpi("Kiểm định", d.val.n)}${kpi("Kiểm tra (A)", d.test.n)}${kpi("Thiết bị khác (B)", d.ext.n)}${kpi("Kích thước", `${R.config.size}×${R.config.size}`)}${kpi("Epoch tối đa", R.config.epochs)}</div></div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>E1 – So sánh bốn mô hình</h3></div><div id="x1" class="chart"></div><p class="muted sm">Trung bình ± độ lệch chuẩn qua 3 hạt. Dice chênh nhau không quá 0,002; kiểm định Wilcoxon không có ý nghĩa.</p></div>
       <div class="card"><div class="card-h"><h3>Kiểm định Wilcoxon (Dice từng ảnh)</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>So sánh</th><th class="n">Chênh Dice</th><th class="n">Ảnh tốt hơn</th><th class="n">p</th></tr></thead><tbody>${R.wilcoxon.map((w) => `<tr><td>${w.a} vs ${w.b}</td><td class="n">${w.mean_diff >= 0 ? "+" : ""}${F(w.mean_diff, 4)}</td><td class="n">${w.wins}/${w.n}</td><td class="n">${F(w.p, 3)}</td></tr>`).join("")}</tbody></table></div><h4 style="margin-top:16px">HD95 (điểm ảnh)</h4><div id="x1b" class="chart"></div></div>
@@ -806,6 +817,10 @@
       <div class="card"><div class="card-h"><h3>E6 – Chi phí tính toán</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mô hình</th><th class="n">Tham số</th><th class="n">GFLOPs</th><th class="n">ms/ảnh</th><th class="n">Huấn luyện</th></tr></thead><tbody>${R.efficiency.filter((e) => MK.includes(e.key)).map((e) => `<tr><td>${mtag(e.key)} ${esc(e.name)}</td><td class="n">${e.params.toLocaleString("vi-VN")}</td><td class="n">${F(e.gflops, 3)}</td><td class="n">${F(e.ms, 1)}</td><td class="n">${R.train_info[e.key] ? F(R.train_info[e.key].time[0] / 60, 1) + " ph" : "–"}</td></tr>`).join("")}</tbody></table></div></div></div>
       ${R.tables.map((t) => `<div class="card"><div class="card-h"><h3>${esc(t.title)}</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr>${t.columns.map((c, i) => `<th class="${i ? "n" : ""}">${esc(c)}</th>`).join("")}</tr></thead><tbody>${t.rows.map((r, ri) => `<tr>${r.map((c, i) => `<td class="${i ? "n" : ""} ${t.best === ri ? "best" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`).join("")}
       <div class="card"><div class="card-h"><h3>Hình trong báo cáo</h3></div><div class="figs">${R.figures.map((f) => `<figure><img src="/results/figures/${f.file}" alt="${esc(f.title)}" loading="lazy"><figcaption>${esc(f.title)}</figcaption></figure>`).join("")}</div></div>`;
+    if (MX) {
+      const v = MXK.flatMap((k) => [mrun(k).test.all.dice, mrun(k).test.stu.dice]), lo = Math.max(0, Math.floor(Math.min(...v) * 20) / 20 - 0.05), hi = Math.min(1, Math.ceil(Math.max(...v) * 20) / 20 + 0.02);
+      Charts.dot($("#xm1"), { categories: MXK, series: [{ name: "Kiểm tra gộp", values: MXK.map((k) => mrun(k).test.all.dice), color: Charts.color(0) }, { name: "STU (ngoài miền)", values: MXK.map((k) => mrun(k).test.stu.dice), color: Charts.color(1) }], xMin: lo, xMax: hi, ml: 84, rowH: 34, offset: true, valueLabel: false, dotLabels: true, tickDec: 2, xTitle: "Dice" });
+    }
     if (BU) {
       const all = BK.flatMap((k) => [BU.summary[k].test_dice, BU.summary[k].stu_dice]), lo = Math.max(0, Math.floor(Math.min(...all) * 20) / 20 - 0.05), hi = Math.min(1, Math.ceil(Math.max(...all) * 20) / 20 + 0.02);
       Charts.dot($("#xb1"), { categories: BK, series: [{ name: "BUSI (kiểm tra)", values: BK.map((k) => BU.summary[k].test_dice), color: Charts.color(0) }, { name: "STU (ngoài miền)", values: BK.map((k) => BU.summary[k].stu_dice), color: Charts.color(1) }], xMin: lo, xMax: hi, ml: 60, rowH: 34, offset: true, valueLabel: false, dotLabels: true, tickDec: 2, xTitle: "Dice" });
@@ -839,6 +854,45 @@
   };
 
 
+  // ================================================================== ĐỐI CHIẾU NGHIÊN CỨU
+  RENDER.related = async () => {
+    if (!S.rel) S.rel = await api("/api/related").catch(() => null);
+    if (S.mix === undefined) S.mix = await api("/api/mix").catch(() => ({}));
+    if (S.busi === undefined) S.busi = await api("/api/busi").catch(() => ({}));
+    const J = S.rel, box = $("#relBox");
+    if (!J || !J.literature) { box.innerHTML = '<div class="card"><div class="empty"><p>Chưa có results/related.json.</p></div></div>'; return; }
+    const prog = await api("/api/real/progress").catch(() => null);
+    const MX = S.mix && S.mix.runs ? S.mix : null, BU = S.busi && S.busi.summary ? S.busi : null;
+    const mr = (k) => (MX ? MX.runs.find((r) => r.name === k) : null);
+    // Dice của đồ án để đặt cạnh số đã công bố (cùng tên bộ dữ liệu, khác giao thức)
+    const ours = [];
+    if (BU && BU.summary.M1) ours.push(["Đồ án – U-Net (M1), học BUSI", BU.summary.M1.test_dice, BU.summary.M1.stu_dice]);
+    if (BU && BU.summary["M4-R"]) ours.push(["Đồ án – M4-R, học BUSI", BU.summary["M4-R"].test_dice, BU.summary["M4-R"].stu_dice]);
+    if (mr("M1-R")) ours.push(["Đồ án – U-Net (M1-R), học 3 bộ", mr("M1-R").test.busi.dice, mr("M1-R").test.stu.dice]);
+    if (mr("M4-R")) ours.push(["Đồ án – M4-R, học 3 bộ", mr("M4-R").test.busi.dice, mr("M4-R").test.stu.dice]);
+    const L = J.literature, aB = L[0], aS = L[1];
+    const cmp = [["AAU-net – U-Net", aB.rows[0][1], aS.rows[0][1]], ["AAU-net – Attention U-Net", aB.rows[1][1], aS.rows[1][1]], ["AAU-net (đề xuất, TMI 2023)", aB.rows[3][1], aS.rows[3][1]], ...ours];
+    const used = MX && MX.dataset ? MX.dataset.busi.n + MX.dataset.busbra.n + MX.dataset.breast.n + 42 : J.datasets.filter((d) => d.used).reduce((a, d) => a + d.n, 0), avail = J.datasets.filter((d) => d.mask && d.name !== "BUS-Large").reduce((a, d) => a + d.n, 0);
+    const have = prog ? prog.with_mask : null, target = prog ? prog.target : 10000;
+    box.innerHTML = `<div class="card"><div class="card-h"><h3>Bối cảnh y học</h3><span class="badge warn">Vì sao cần phân đoạn tự động</span></div>
+      <ul class="reflist">${J.medical.map((m) => `<li><p>${esc(m.fact)}</p><span class="muted sm">${esc(m.source)}</span></li>`).join("")}</ul></div>
+      <div class="card"><div class="card-h"><h3>So sánh với công trình đã công bố</h3><span class="badge">Dice trên BUSI và STU</span></div>
+      <div class="grid g2" style="margin:0"><div><h4>BUSI (kiểm tra trong miền)</h4><div id="rc1" class="chart"></div></div><div><h4>STU – 42 ảnh bệnh viện khác (chưa học)</h4><div id="rc2" class="chart"></div></div></div>
+      <p class="muted sm">${esc(J.note)} ${esc(J.ours_note)} AAU-net: BUSI kiểm định chéo 4 phần trên cả 780 ảnh; STU khi học trên Dataset B. Điểm của đồ án vì vậy chỉ cho thấy mô hình nhỏ chạy CPU vẫn đạt mức tương đương các mạng lớn, không chứng minh vượt trội.</p>
+      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>Nghiên cứu</th><th>Dữ liệu và giao thức</th><th>Kết quả</th></tr></thead><tbody>${L.map((x) => `<tr><td><b>${esc(x.study)}</b></td><td>${esc(x.data)}</td><td>${x.rows.map(([n, v]) => `${esc(n)} <b>${F(v, 3)}</b>`).join(" · ")} <span class="muted sm">(${x.metric})</span></td></tr>`).join("")}</tbody></table></div></div>
+      <div class="card"><div class="card-h"><h3>Dữ liệu đầu vào: hướng tới 10.000 ảnh</h3><span class="badge ok">${have !== null ? `${have.toLocaleString("vi-VN")} / ${target.toLocaleString("vi-VN")} ảnh trong CSDL` : `${used.toLocaleString("vi-VN")} ảnh đã dùng`}</span></div>
+      <div class="kpis small" style="margin:0 0 12px">${kpi("Đã dùng để huấn luyện / kiểm tra", used.toLocaleString("vi-VN"), "4 bộ, 4 quốc gia, sau khi lọc trùng")}${kpi("Có mặt nạ, công khai", avail.toLocaleString("vi-VN"), `${J.datasets.length} bộ đã khảo sát`)}${kpi("BUS-Large (KTH, 2026)", "> 21.000", "21 bộ, cần xin quyền truy cập")}${kpi("Mục tiêu", target.toLocaleString("vi-VN"), "theo yêu cầu của GVHD")}</div>
+      <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>Bộ dữ liệu</th><th>Nước</th><th class="n">Số ảnh</th><th>Ảnh bình thường</th><th>Giấy phép</th><th>Trích dẫn</th><th>Trạng thái</th></tr></thead><tbody>${J.datasets.map((d) => `<tr><td><b>${esc(d.name)}</b></td><td>${esc(d.country)}</td><td class="n">${d.n >= 21000 ? "> 21.000" : d.n.toLocaleString("vi-VN")}</td><td>${d.normal ? "có" : "không"}</td><td>${esc(d.license)}</td><td class="sm">${esc(d.cite)}</td><td style="white-space:nowrap">${d.used ? '<span class="badge ok">đã dùng</span>' : '<span class="badge">chưa có</span>'}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted sm">Không sinh ảnh giả để "đủ số": tăng cường dữ liệu chỉ dùng khi huấn luyện. Ảnh trùng giữa các bộ được loại bằng băm cảm nhận; ảnh của một bệnh nhân luôn nằm cùng một tập. Nhập bộ mới: <code>python manage.py import-real &lt;bộ&gt; &lt;thư mục&gt; --manifest &lt;bảng kê&gt;</code>.</p></div>
+      <div class="card"><div class="card-h"><h3>Đề tài tương tự trên GitHub</h3><span class="muted sm">số sao tại thời điểm khảo sát (11/2026)</span></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Kho mã</th><th class="n">Sao</th><th>Nội dung</th></tr></thead><tbody>${J.github.map((g) => `<tr><td><code>${esc(g.repo)}</code></td><td class="n">${g.stars.toLocaleString("vi-VN")}</td><td>${esc(g.what)}</td></tr>`).join("")}</tbody></table></div></div>
+      <div class="grid g2"><div class="card"><div class="card-h"><h3>Web chạy offline: nền tảng</h3></div><div class="tbl-wrap"><table class="tbl"><tbody>${J.offline.platform.map(([a, b]) => `<tr><td><b>${esc(a)}</b></td><td>${esc(b)}</td></tr>`).join("")}</tbody></table></div>
+      <h4 style="margin-top:14px">Lựa chọn khác</h4><div class="tbl-wrap"><table class="tbl"><tbody>${J.offline.alternatives.map(([a, b]) => `<tr><td><b>${esc(a)}</b></td><td>${esc(b)}</td></tr>`).join("")}</tbody></table></div></div>
+      <div class="card"><div class="card-h"><h3>Ứng dụng của web offline</h3></div><ul class="reflist">${J.offline.uses.map((u) => `<li><p>${esc(u)}</p></li>`).join("")}</ul></div></div>`;
+    const lab = cmp.map((c) => c[0]), col = cmp.map((c) => (/^Đồ án/.test(c[0]) ? (/M4/.test(c[0]) ? Charts.color(0) : Charts.color(2)) : Charts.color(7)));
+    [[1, "#rc1"], [2, "#rc2"]].forEach(([i, id]) => { const v = cmp.map((c) => c[i]); Charts.dot($(id), { categories: lab, series: [{ name: "Dice", values: v, colors: col }], xMin: Math.floor(Math.min(...v) * 20) / 20 - 0.05, xMax: Math.min(1, Math.ceil(Math.max(...v) * 20) / 20 + 0.02), ml: 210, rowH: 28, legend: false, tickDec: 2, xTitle: "Dice" }); });
+  };
+
   // ================================================================== DẢI CHỌN ẢNH (dùng chung)
   S.srcSplit = { an: "test", ab: "test" };
   async function strip(box, onPick) {
@@ -857,7 +911,7 @@
   $$(".src-sw").forEach((sw) => $$("button", sw).forEach((b) => b.addEventListener("click", () => {
     $$("button", sw).forEach((x) => x.classList.toggle("on", x === b)); const k = sw.dataset.for; S.srcSplit[k] = b.dataset.split;
     const pick = k === "an" ? (inp) => { S.an.input = inp; anRun(); } : abPick;
-    if (k === "an") { const want = b.dataset.split !== "test" && S.models.some((m) => m.id === "M4-BUSI") ? "M4-BUSI" : b.dataset.split === "real" && S.models.some((m) => m.id === "M4-STU") ? "M4-STU" : "M4"; $("#anModel").value = want; anFlags(); }
+    if (k === "an") { const want = b.dataset.split !== "test" && S.models.some((m) => m.id === "M4-MIX") ? "M4-MIX" : b.dataset.split !== "test" && S.models.some((m) => m.id === "M4-BUSI") ? "M4-BUSI" : b.dataset.split === "real" && S.models.some((m) => m.id === "M4-STU") ? "M4-STU" : "M4"; $("#anModel").value = want; anFlags(); }
     strip($(k === "an" ? "#anStrip" : "#abStrip"), pick).then((rows) => { if (rows.length) $(k === "an" ? "#anStrip button" : "#abStrip button").click(); });
   })));
   const inputForm = (inp) => { const f = new FormData(); if (inp.id) f.append("image_id", inp.id); else f.append("image", inp.file, inp.file.name); return f; };

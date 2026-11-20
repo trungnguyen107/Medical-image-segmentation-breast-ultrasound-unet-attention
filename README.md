@@ -20,7 +20,8 @@ Mã nguồn, phần mềm **SonoSeg** và tài liệu của đồ án tốt nghi
 - **Thực nghiệm trên hai loại dữ liệu:**
   - ảnh siêu âm **mô phỏng** (thí nghiệm E1–E6, 880 ảnh);
   - ảnh siêu âm **thật** STU-Hospital (thí nghiệm R1–R2, 42 ảnh, mặt nạ do bác sĩ vẽ);
-  - ảnh siêu âm **thật** BUSI (thí nghiệm R3, 682 ảnh sau khi lọc trùng).
+  - ảnh siêu âm **thật** BUSI (thí nghiệm R3, 682 ảnh sau khi lọc trùng);
+  - **gộp 3 bộ ảnh thật** BUSI + BUS-BRA + BrEaST (thí nghiệm R4, 2.767 ảnh, chia theo bệnh nhân) – cải thiện dữ liệu đầu vào.
 - **Phần mềm web SonoSeg:** Flask + PyTorch, chạy trên CPU, không cần GPU. Gồm các trang:
   - phân đoạn, có kích thước, vị trí, độ tin cậy và phiếu kết quả PDF;
   - "Bên trong M4": xem từng bước CBAM, Attention Gate và giám sát sâu;
@@ -28,7 +29,8 @@ Mã nguồn, phần mềm **SonoSeg** và tài liệu của đồ án tốt nghi
   - huấn luyện ngay trên web;
   - đánh giá và so sánh mô hình;
   - xử lý hàng loạt;
-  - lịch sử ca, lưu trong cơ sở dữ liệu SQLite.
+  - lịch sử ca, lưu trong cơ sở dữ liệu SQLite;
+  - **Đối chiếu nghiên cứu**: bối cảnh y học Việt Nam, so sánh với công trình đã công bố, danh mục bộ dữ liệu (tiến độ hướng tới 10.000 ảnh), đề tài trên GitHub, nền tảng chạy offline.
 
 ## Kết quả trên ảnh siêu âm thật (STU-Hospital, 42 ảnh)
 
@@ -106,6 +108,36 @@ Bộ lọc là một sự đánh đổi: ít báo nhầm hơn nhưng bỏ sót n
 
 Chạy lại: giải nén BUSI vào `data/external/Dataset_BUSI_with_GT`, rồi `python manage.py import-busi` và `python busi_experiments.py`. Mất khoảng 32 phút trên CPU 2 nhân. Lưu trọng số web: `BUSI_SIZE=128 python busi_experiments.py --final M4-R --epochs 70`, sau đó `BUSI_SIZE=128 python busi_experiments.py --tune weights/real/M4-BUSI-128.pt` và đổi tên thành `M4-BUSI.pt`.
 
+## R4 – Gộp 3 bộ ảnh thật (cải thiện dữ liệu đầu vào)
+
+BUSI (Ai Cập, giữ đúng cách chia R3) + BUS-BRA (Brazil, 1.834 ảnh / 1.060 bệnh nhân, **chia theo bệnh nhân**) + BrEaST (Ba Lan, 251 ảnh). Loại 42 ảnh gần trùng bằng dHash. Huấn luyện 1.939 ảnh, kiểm định 276, kiểm tra 552 (530 ảnh có khối u). STU (42 ảnh) không bao giờ được học. Mọi mô hình dùng công thức R, 96×96, 40 epoch, một hạt.
+
+| Cấu hình | BUSI | BUS-BRA | BrEaST | Gộp 3 bộ | STU (chưa học) |
+|---|---|---|---|---|---|
+| M1-R U-Net | 0,779 | 0,860 | 0,795 | 0,836 | 0,885 |
+| M2-R Attention U-Net | 0,772 | 0,861 | 0,790 | 0,835 | 0,876 |
+| M3-R U-Net + CBAM | 0,795 | 0,865 | 0,791 | 0,843 | 0,886 |
+| **M4-R đề xuất** | 0,784 | **0,866** | 0,791 | 0,841 | 0,885 |
+| M4-R chỉ học BUSI (R3) | 0,783 | 0,702 | 0,672 | 0,717 | 0,846 |
+
+- **Dữ liệu quan trọng hơn kiến trúc.** Cùng M4-R, học 3 bộ thay vì chỉ BUSI: Dice gộp 0,717 → 0,841 (Δ = +0,124, Wilcoxon p < 0,001, 418/530 ảnh tốt hơn); STU 0,846 → 0,885 (Δ = +0,039, p < 0,001, 31/42 ảnh).
+- Khi đủ dữ liệu, M4-R hơn U-Net (Δ = +0,005, p < 0,001, 296/530 ảnh) và Attention U-Net (Δ = +0,006, p = 0,011) trên tập gộp; ngang U-Net + CBAM (Δ = −0,002, p = 0,56). Chênh lệch nhỏ, một hạt.
+
+Trọng số web **M4-MIX** là một lượt huấn luyện lại cùng cấu hình (trên CPU kết quả không lặp lại tuyệt đối): BUSI 0,775 · BUS-BRA 0,855 · BrEaST 0,792 · gộp 0,832 · STU 0,886.
+
+Chạy lại: `python fetch_data.py` (hoặc `--mirror`), giải nén BUSI vào `data/external/Dataset_BUSI_with_GT`, rồi `python mix_experiments.py --epochs 40` (khoảng 70 phút trên CPU 2 nhân) và `python mix_experiments.py --final M4-R` để lưu `weights/real/M4-MIX.pt`.
+
+## Đối chiếu với công trình đã công bố
+
+| Công trình | Dữ liệu | Dice |
+|---|---|---|
+| AAU-net (Chen et al., IEEE TMI 2023) | BUSI, kiểm định chéo 4 phần | U-Net 0,701 · Attention U-Net 0,680 · AAU-net 0,775 |
+| AAU-net | Học Dataset B, kiểm tra STU | U-Net 0,714 · AAU-net 0,802 |
+| BUS-Set (Thomas et al., Med. Phys. 2023) | 4 bộ gộp, 1.154 ảnh | Tốt nhất 0,851 |
+| **Đồ án, M4-R** (0,5 triệu tham số, CPU) | BUSI / STU | 0,784 / 0,885 |
+
+Giao thức khác nhau (đồ án lọc ảnh trùng, không tính ảnh bình thường vào Dice), nên chỉ so được về độ lớn. Chi tiết, nguồn và danh sách đề tài tương tự trên GitHub: trang **Đối chiếu nghiên cứu** trên web hoặc `results/related.json`.
+
 ## Chạy nhanh
 
 ```bash
@@ -125,7 +157,7 @@ Lần chạy đầu, ứng dụng tự làm hai việc, **không cần Internet*
 
 ## Dữ liệu ảnh siêu âm thật (bình thường / lành tính / ác tính)
 
-Mục tiêu của đề tài là **10.000 ảnh thật có mặt nạ** (không tính ảnh mô phỏng và không tính ảnh nhân bản bằng tăng cường dữ liệu). Phần mềm chỉ *đếm và quản lý*, không tạo ảnh cho đủ số. Các bộ công khai đã làm sạch cộng lại khoảng 3.900 ảnh (xem [DATASETS.md](DATASETS.md)); phần còn lại phải đến từ hợp tác bệnh viện (phê duyệt đạo đức, ẩn danh, bác sĩ vẽ mặt nạ).
+Mục tiêu của đề tài là **10.000 ảnh thật có mặt nạ** (không tính ảnh mô phỏng và không tính ảnh nhân bản bằng tăng cường dữ liệu). Phần mềm chỉ *đếm và quản lý*, không tạo ảnh cho đủ số. Hiện đã dùng 2.809 ảnh (BUSI, BUS-BRA, BrEaST, STU); các bộ công khai có mặt nạ cộng lại khoảng 6.300 ảnh, và bộ gộp BUS-Large (KTH, 2026) có hơn 21.000 ảnh nhưng cần xin quyền truy cập (xem [DATASETS.md](DATASETS.md)); phần còn lại phải đến từ hợp tác bệnh viện (phê duyệt đạo đức, ẩn danh, bác sĩ vẽ mặt nạ).
 
 ```bash
 python manage.py import-real busi   <thư mục BUSI>                      # benign/ malignant/ normal/, mặt nạ *_mask.png
@@ -159,6 +191,8 @@ Trên web: tab **Phân đoạn → Ảnh thật** lấy ngẫu nhiên ảnh th�
 ```bash
 python manage.py import-stu                # 42 ảnh siêu âm thật (STU-Hospital)
 python manage.py import-busi [thư mục]     # BUSI (benign/, malignant/, normal/) nếu đã tải về
+python fetch_data.py                       # tải BUS-BRA (Zenodo) rồi nhập BUS-BRA, BrEaST đặt trong data/external
+python fetch_data.py --mirror              # khi không vào được Zenodo: lấy từ bản sao trên GitHub
 python -m pytest -q tests                  # kiểm thử API, chỉ số, bộ nhập ảnh thật
 ```
 
@@ -170,6 +204,8 @@ python -m pytest -q tests                  # kiểm thử API, chỉ số, bộ 
 | `train.py`, `run_experiments.py`, `evaluate_all.py` | Thí nghiệm E1–E6 trên ảnh mô phỏng |
 | `real_experiments.py` | Thí nghiệm R1–R2 trên ảnh thật STU-Hospital |
 | `busi_experiments.py` | Thí nghiệm R3 trên BUSI; `--final` lưu M4-BUSI, `--tune` chọn hậu xử lý |
+| `mix_experiments.py` | Thí nghiệm R4 gộp 3 bộ ảnh thật; `--final M4-R` lưu M4-MIX; `--split-map` ghi cách chia cho CSDL web |
+| `fetch_data.py` | Tải và nhập BUS-BRA, BrEaST (chia đúng như R4) |
 | `data.py` | Bộ sinh ảnh siêu âm mô phỏng, tiền xử lý, tăng cường |
 | `metrics.py` | Dice, IoU, Precision, Recall, HD95, chỉ số hình thái |
 | `app.py`, `templates/`, `static/` | Máy chủ Flask và giao diện một trang (biểu đồ SVG tự viết) |
@@ -177,9 +213,9 @@ python -m pytest -q tests                  # kiểm thử API, chỉ số, bộ 
 | `real_data.py` | Nhập ảnh siêu âm thật: loại trùng, chia theo bệnh nhân, giấy phép, theo dõi tiến độ 10.000 ảnh |
 | `weights/final/` | M1–M4 (huấn luyện trên ảnh mô phỏng) |
 | `weights/ablation/` | 5 biến thể ablation (A3, A4, D1–D3) |
-| `weights/real/` | M4-BUSI, M4-STU (huấn luyện trên ảnh thật) |
+| `weights/real/` | M4-MIX (3 bộ ảnh thật, khuyến nghị), M4-BUSI, M4-STU |
 | `data/sample/` | 420 ảnh mô phỏng kèm mặt nạ |
-| `results/` | Kết quả (`results.json`, `real_results.json`, `busi_results.json`), hình, ảnh chụp giao diện |
+| `results/` | Kết quả (`results.json`, `real_results.json`, `busi_results.json`, `mix_results.json`, `related.json`), hình, ảnh chụp giao diện |
 | `docs/` | Báo cáo, slide, đề cương |
 | [`DATASETS.md`](DATASETS.md) | Danh sách nguồn ảnh siêu âm vú thật (quốc tế và Việt Nam) |
 

@@ -38,6 +38,7 @@
   <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></symbol>
   <symbol id="i-layers" viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="7" width="4" height="10" rx="1.2"/><rect x="16" y="4" width="5" height="16" rx="1.5"/><path d="M8 12h2M14 12h2"/></symbol>
   <symbol id="i-toggle" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="16.5" cy="12" r="3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7M8 11h7"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></symbol>
 </svg>
 
@@ -63,6 +64,7 @@
       <div class="nav-h">Đồ án</div>
       <a href="#exp" data-page="exp"><svg><use href="#i-flask"/></svg><span>Kết quả thực nghiệm</span></a>
       <a href="#model" data-page="model"><svg><use href="#i-net"/></svg><span>Mô hình &amp; phương pháp</span></a>
+      <a href="#related" data-page="related"><svg><use href="#i-book"/></svg><span>Đối chiếu nghiên cứu</span></a>
     </nav>
     <div class="nav-foot">
       <div class="srv" id="srv"><i></i><span>Đang kết nối…</span></div>
@@ -375,7 +377,7 @@
     <section class="page" id="p-eval">
       <div class="card">
         <div class="card-h"><h3>Chọn mô hình để so sánh</h3>
-          <div class="row gap sm-gap"><select id="eSplit" class="sel sm"><option value="test">Tập kiểm tra – miền A (80 ảnh)</option><option value="ext">Thiết bị khác – miền B (60 ảnh)</option><option value="busi">BUSI – tập kiểm tra (ảnh thật)</option><option value="real">Ảnh siêu âm thật – STU (42 ảnh)</option></select>
+          <div class="row gap sm-gap"><select id="eSplit" class="sel sm"><option value="test">Tập kiểm tra – miền A (80 ảnh)</option><option value="ext">Thiết bị khác – miền B (60 ảnh)</option><option value="busi">BUSI – tập kiểm tra (ảnh thật)</option><option value="mix">3 bộ ảnh thật – BUSI + BUS-BRA + BrEaST (R4)</option><option value="real">Ảnh siêu âm thật – STU (42 ảnh)</option></select>
             <button class="btn sm primary" id="eRun"><svg><use href="#i-play"/></svg>Đánh giá lại</button></div></div>
         <div class="chips" id="eModels"></div>
       </div>
@@ -399,6 +401,7 @@
 
     <!-- ===================== MÔ HÌNH ===================== -->
     <section class="page" id="p-model"><div id="modelBox"></div></section>
+    <section class="page" id="p-related"><div id="relBox"></div></section>
   </div>
 </div>
 

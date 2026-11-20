@@ -137,7 +137,13 @@ def evaluate(model_id, split="test", dataset=None):
     dataset = dataset or {"real": "stu", "busi": "busi"}.get(split, "sample")
     split = "busi_test" if split == "busi" else split
     model, ck = load_model(model_id)
-    X, Y, K, rows = T.load_split(split, ck["size"], dataset)
+    if split == "mix":                         # tập kiểm tra gộp của R4: BUSI + BUS-BRA + BrEaST (chia đúng như thí nghiệm)
+        parts = [T.load_split(sp, ck["size"], ds) for sp, ds in (("busi_test", "busi"), ("test", "busbra"), ("test", "breast"))]
+        parts = [p for p in parts if len(p[0])]
+        X, Y, K, rows = (np.concatenate([p[0] for p in parts]), np.concatenate([p[1] for p in parts]),
+                         np.concatenate([p[2] for p in parts]), sum([list(p[3]) for p in parts], [])) if parts else (np.zeros((0,)), None, None, [])
+    else:
+        X, Y, K, rows = T.load_split(split, ck["size"], dataset)
     if len(X) == 0:
         raise ValueError("Tập dữ liệu rỗng.")
     t0 = time.perf_counter()

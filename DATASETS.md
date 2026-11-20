@@ -7,8 +7,11 @@ Tổng hợp tháng 11/2026. Trước khi dùng một bộ dữ liệu, hãy đ�
 | Bộ | Số ảnh | Mặt nạ | Nguồn | Cách dùng trong dự án |
 |---|---|---|---|---|
 | **STU-Hospital** (Shantou University, Trung Quốc) | 42 cặp ảnh – mặt nạ | Có | [github.com/xbhlk/STU-Hospital](https://github.com/xbhlk/STU-Hospital) · Zhuang et al., *PLoS ONE* 14(8): e0221535, 2019 | `python manage.py import-stu`; thí nghiệm `real_experiments.py` |
+| **BUSI** (Ai Cập) | 682 ảnh sau lọc trùng (780 gốc) | Có | Al-Dhabyani et al., *Data in Brief* 28, 2020 | `python manage.py import-busi`; thí nghiệm R3, R4 |
+| **BUS-BRA** (Brazil) | 1.834 ảnh / 1.060 bệnh nhân (1.875 gốc) | Có | Gómez-Flores et al., *Med. Phys.* 51, 2024 · CC BY 4.0 | `python fetch_data.py`; thí nghiệm R4 |
+| **BrEaST-Lesions-USG** (Ba Lan) | 251 ảnh (252 có ảnh gốc) | Có | Pawłowska et al., *Sci. Data* 11, 2024 · CC BY 4.0 | `python fetch_data.py`; thí nghiệm R4 |
 
-Repo không chứa sẵn ảnh STU vì bộ dữ liệu gốc không ghi giấy phép. Lệnh `import-stu` sẽ tải ảnh trực tiếp từ GitHub về máy của bạn.
+Repo không chứa sẵn ảnh thật. `import-stu` tải STU từ GitHub; `fetch_data.py` tải BUS-BRA từ Zenodo (hoặc `--mirror`: bản sao không chính thức trên GitHub gồm BUS-BRA và BrEaST, cùng giấy phép CC BY 4.0). Gói ĐATN kèm sẵn tập **kiểm tra** của BUS-BRA và BrEaST (CC BY 4.0, nguồn ghi trong SOURCES.md) để demo offline.
 
 ## Có mặt nạ phân đoạn, dùng được cho đề tài
 

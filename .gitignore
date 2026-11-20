@@ -17,3 +17,5 @@ results_train.log
 .DS_Store
 Thumbs.db
 results/busi_cache_*.npz
+weights/real/*-96.pt
+results/mix_cache_*.npz
