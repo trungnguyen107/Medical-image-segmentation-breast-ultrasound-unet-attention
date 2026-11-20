@@ -216,7 +216,7 @@ python -m pytest -q tests                  # kiểm thử API, chỉ số, bộ 
 | `weights/real/` | M4-MIX (3 bộ ảnh thật, khuyến nghị), M4-BUSI, M4-STU |
 | `data/sample/` | 420 ảnh mô phỏng kèm mặt nạ |
 | `results/` | Kết quả (`results.json`, `real_results.json`, `busi_results.json`, `mix_results.json`, `related.json`), hình, ảnh chụp giao diện |
-| `docs/` | Báo cáo, slide, đề cương |
+| `docs/` | Báo cáo, slide, đề cương, đặc tả yêu cầu phần mềm (SRS_SonoSeg) |
 | [`DATASETS.md`](DATASETS.md) | Danh sách nguồn ảnh siêu âm vú thật (quốc tế và Việt Nam) |
 
 ## Dữ liệu
