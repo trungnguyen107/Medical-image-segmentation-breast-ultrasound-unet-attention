@@ -27,8 +27,9 @@ def start(cfg):
     with _lock:
         if busy():
             raise RuntimeError("Đang có một tác vụ huấn luyện chạy. Hãy chờ hoặc dừng tác vụ đó.")
-        n_avail = db.q("SELECT COUNT(*) n FROM images WHERE dataset=? AND split='train' AND mask IS NOT NULL", (cfg["dataset"],), one=True)["n"]
-        n_val = db.q("SELECT COUNT(*) n FROM images WHERE dataset=? AND split='val' AND mask IS NOT NULL", (cfg["dataset"],), one=True)["n"]
+        cond, args = (("dataset NOT IN ('sample','uploads','stu')", ()) if cfg["dataset"] == "real" else ("dataset=?", (cfg["dataset"],)))
+        n_avail = db.q(f"SELECT COUNT(*) n FROM images WHERE {cond} AND split='train' AND mask IS NOT NULL", args, one=True)["n"]
+        n_val = db.q(f"SELECT COUNT(*) n FROM images WHERE {cond} AND split='val' AND mask IS NOT NULL", args, one=True)["n"]
         if n_avail < 8 or n_val < 2:
             raise RuntimeError("Bộ dữ liệu chưa đủ ảnh huấn luyện/kiểm định.")
         cfg["n_train"] = min(cfg["n_train"], n_avail)

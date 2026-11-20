@@ -147,3 +147,24 @@ def test_import_stu_real_split(client):
     assert j["total"] == 42 and j["rows"][0]["mask_url"]
     r = A.trainer.evaluate("M4", "real")
     assert r["n"] == 42 and 0 < r["dice"] < 1
+
+
+def test_real_progress_and_origin_filter(client):
+    p = client.get("/api/real/progress").get_json()
+    assert p["target"] == 10000 and p["total"] == 0 and p["missing"] == 10000 and p["synthetic"] == 46
+    assert client.get("/api/real/sample?type=benign").status_code == 404      # chưa nhập ảnh thật
+    assert client.get("/api/real/sample?type=xyz").status_code == 400
+    assert client.get("/api/images?origin=real").get_json()["total"] == 0
+    assert client.get("/api/images?origin=synthetic").get_json()["total"] == 46
+    # nhập vài ảnh "thật" giả lập để thử đường đi đầy đủ
+    import data as D, real_data as RD
+    root = os.path.join(_tmp, "raw")
+    for kind in ("normal", "benign", "malignant"):
+        os.makedirs(f"{root}/{kind}", exist_ok=True)
+        for i in range(4):
+            img, m, _ = D.make_sample(300 + i * 7 + 1000 * (kind == 'benign') + 2000 * (kind == 'malignant'), kind=kind, size=128)
+            cv2.imwrite(f"{root}/{kind}/{kind}{i}.png", img); cv2.imwrite(f"{root}/{kind}/{kind}{i}_mask.png", m * 255)
+    RD.import_real("fake", root, log=lambda *a: None)
+    s = client.get("/api/real/sample?type=malignant").get_json()
+    assert s["kind"] == "malignant" and s["dataset"] == "fake" and s["image"].startswith("data:image/png")
+    assert client.get("/api/real/progress").get_json()["total"] == 12

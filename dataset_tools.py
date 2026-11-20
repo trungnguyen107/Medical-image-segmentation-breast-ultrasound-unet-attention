@@ -49,29 +49,9 @@ def build_sample(force=False, log=print):
 
 
 def import_folder(root, dataset="busi", seed=0, split=(0.7, 0.1, 0.2), log=print):
-    """Nhập thư mục kiểu BUSI vào data/<dataset>/ và CSDL (chia phân tầng train/val/test)."""
-    db.init(); rng = np.random.default_rng(seed); n = 0
-    for kind in ["benign", "malignant", "normal"]:
-        files = [f for f in sorted(glob.glob(os.path.join(root, kind, "*.png"))) if "_mask" not in f]
-        idx = rng.permutation(len(files)); a, b = int(split[0] * len(files)), int((split[0] + split[1]) * len(files))
-        for j, fi in enumerate(idx):
-            f = files[fi]; img = imio.imread(f, cv2.IMREAD_GRAYSCALE)
-            if img is None:
-                continue
-            m = np.zeros_like(img)
-            for mf in sorted(glob.glob(f[:-4] + "_mask*.png")):
-                mm = imio.imread(mf, cv2.IMREAD_GRAYSCALE)
-                if mm is not None and mm.shape == m.shape:
-                    m |= (mm > 127).astype(np.uint8)
-            sp = "train" if j < a else "val" if j < b else "test"
-            base = os.path.splitext(os.path.basename(f))[0].replace(" ", "_").replace("(", "").replace(")", "")
-            rel, relm = f"{dataset}/{kind}/{base}.png", f"{dataset}/{kind}/{base}_mask.png"
-            _save(rel, img); _save(relm, m * 255)
-            db.x("INSERT OR REPLACE INTO images(dataset,filename,mask,kind,domain,split,source,width,height,tumor_ratio,created_at) "
-                 "VALUES(?,?,?,?,'A',?,?,?,?,?,?)", (dataset, rel, relm, kind, sp, dataset, img.shape[1], img.shape[0], float(m.mean()), db.now()))
-            n += 1
-    log(f"Đã nhập {n} ảnh vào bộ '{dataset}'.")
-    return n
+    """Giữ tên cũ: nhập thư mục kiểu BUSI qua bộ nhập ảnh thật (loại trùng, chia phân tầng)."""
+    import real_data
+    return real_data.import_real(dataset, root, ratios=split, seed=seed, log=log)["imported"]
 
 
 STU_URL = "https://github.com/xbhlk/STU-Hospital/archive/refs/heads/master.zip"
@@ -196,7 +176,11 @@ def read_item(row):
 
 
 def load_split(split, size, dataset="sample", limit=None):
-    rows = db.q("SELECT * FROM images WHERE dataset=? AND split=? AND mask IS NOT NULL ORDER BY id", (dataset, split))
+    """dataset='real' gộp mọi bộ ảnh thật (trừ STU, chỉ dùng kiểm tra) – dùng để huấn luyện/đánh giá trên ảnh thật."""
+    if dataset == "real":
+        rows = db.q("SELECT * FROM images WHERE dataset NOT IN ('sample','uploads','stu') AND split=? AND mask IS NOT NULL ORDER BY id", (split,))
+    else:
+        rows = db.q("SELECT * FROM images WHERE dataset=? AND split=? AND mask IS NOT NULL ORDER BY id", (dataset, split))
     if limit:
         rows = rows[:limit]
     X = np.zeros((len(rows), size, size), np.uint8); Y = np.zeros_like(X); K = []

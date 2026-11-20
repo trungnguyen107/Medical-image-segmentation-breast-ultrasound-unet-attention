@@ -70,8 +70,17 @@ def conn():
     return c
 
 
+NEW_IMAGE_COLS = {"patient": "TEXT", "phash": "TEXT", "license": "TEXT"}   # thêm ở phiên bản dữ liệu thật
+
+
 def init():
-    c = conn(); c.executescript(SCHEMA); c.commit()
+    c = conn(); c.executescript(SCHEMA)
+    have = {r["name"] for r in c.execute("PRAGMA table_info(images)").fetchall()}
+    for col, typ in NEW_IMAGE_COLS.items():               # nâng cấp CSDL cũ mà không mất dữ liệu
+        if col not in have:
+            c.execute(f"ALTER TABLE images ADD COLUMN {col} {typ}")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_images_patient ON images(dataset, patient)")
+    c.commit()
 
 
 def q(sql, args=(), one=False):
