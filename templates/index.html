@@ -7,7 +7,9 @@
 <meta name="description" content="Phân đoạn khối u trên ảnh siêu âm vú bằng U-Net kết hợp cơ chế Attention.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b76d1'/%3E%3Cpath d='M8 21c3-8 13-8 16 0' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='19' r='3.2' fill='white'/%3E%3C/svg%3E">
 <script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
+<script type="importmap">{"imports":{"three":"/static/vendor/three.module.min.js"}}</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -77,29 +79,28 @@
       <button class="icon-btn menu" id="menuBtn" aria-label="Mở menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <div class="tb-title"><h1 id="pageTitle">Tổng quan</h1><p id="pageSub"></p></div>
       <div class="tb-actions">
-        <span class="badge warn" title="Công cụ nghiên cứu: mô hình học trên ảnh mô phỏng và 42 ảnh thật STU-Hospital">Công cụ nghiên cứu · không dùng chẩn đoán</span>
+        <span class="badge warn" title="Công cụ nghiên cứu: kết quả chỉ để tham khảo, quyết định chẩn đoán thuộc về bác sĩ">Công cụ nghiên cứu · không dùng chẩn đoán</span>
         <button class="icon-btn" id="themeQuick" aria-label="Đổi giao diện sáng/tối"><svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg></button>
       </div>
     </header>
 
     <!-- ===================== TỔNG QUAN ===================== -->
     <section class="page" id="p-dash">
-      <div class="hero card">
+      <div class="hero">
         <div class="hero-txt">
-          <span class="eyebrow">Mô hình đề xuất M4</span>
-          <h2>Phân đoạn khối u trên ảnh siêu âm vú</h2>
-          <p>U-Net kết hợp Attention Gate, CBAM và giám sát sâu. Chạy hoàn toàn trên máy, không cần GPU.</p>
+          <p class="hero-k">Ung thư vú là ung thư phổ biến nhất ở phụ nữ Việt Nam: 24.563 ca mới năm 2022, hơn 60% phát hiện ở giai đoạn III–IV.</p>
+          <h2>Khoanh vùng và đo khối u vú trên ảnh siêu âm, ngay trên máy tính của phòng khám</h2>
+          <p class="hero-sub">SonoSeg dùng U-Net kết hợp Attention Gate và CBAM, học trên 2.809 ảnh siêu âm thật từ 4 quốc gia. Mỗi ảnh mất khoảng 15 ms trên CPU, không cần GPU hay Internet, và ảnh bệnh nhân không rời khỏi máy.</p>
           <div class="row gap">
-            <button class="btn primary lg" data-go="seg" data-demo="1"><svg><use href="#i-sparkle"/></svg>Chạy thử ngay</button>
-            <button class="btn lg" data-go="anatomy"><svg><use href="#i-layers"/></svg>Xem bên trong M4</button>
+            <button class="btn primary lg" data-go="seg" data-demo="1"><svg><use href="#i-sparkle"/></svg>Phân đoạn ảnh mẫu</button>
+            <button class="btn ghost lg" data-go="anatomy"><svg><use href="#i-layers"/></svg>Xem bên trong M4</button>
           </div>
           <div class="hero-chips" id="heroChips"></div>
         </div>
-        <div class="hero-art" id="heroArt" aria-hidden="true">
-          <figure><div class="ha-img skeleton" id="ha0"></div><figcaption>Ảnh siêu âm</figcaption></figure>
-          <figure><div class="ha-img skeleton" id="ha1"></div><figcaption>Attention</figcaption></figure>
-          <figure><div class="ha-img skeleton" id="ha2"></div><figcaption id="ha2c">Kết quả</figcaption></figure>
-        </div>
+        <figure class="hero-3d">
+          <div class="h3d" id="hero3d" role="img" aria-label="Bề mặt 3D của ảnh siêu âm: vùng mô hình cho là khối u nổi cao và có viền màu hổ phách"></div>
+          <figcaption><span id="hero3dCap">Đang dựng bề mặt 3D…</span><span class="h3d-hint">Độ cao = xác suất khối u · kéo để xoay</span></figcaption>
+        </figure>
       </div>
       <div class="stats" id="dashKpi"></div>
       <div class="go3">
@@ -222,7 +223,7 @@
             <div class="vt">
               <div class="seg-ctl" id="layerCtl" role="tablist">
                 <button data-layer="overlay" class="on">Lớp phủ</button><button data-layer="image">Gốc</button><button data-layer="mask">Mặt nạ</button>
-                <button data-layer="prob">Xác suất</button><button data-layer="unc" title="Những điểm ảnh mô hình lưỡng lự (xác suất gần 0,5)">Độ không chắc</button><button data-layer="att">Attention</button><button data-layer="split">Trước/sau</button>
+                <button data-layer="prob">Xác suất</button><button data-layer="unc" title="Những điểm ảnh mô hình lưỡng lự (xác suất gần 0,5)">Độ không chắc</button><button data-layer="att">Attention</button><button data-layer="split">Trước/sau</button><button data-layer="3d" title="Bề mặt 3D: độ cao là xác suất khối u">3D</button>
               </div>
               <div class="vt-r">
                 <label class="mini-chk"><input type="checkbox" id="showGt" checked> Viền chuẩn</label>
@@ -231,6 +232,7 @@
             </div>
             <div class="stage" id="stage">
               <canvas id="cv"></canvas>
+              <div class="stage3d" id="stage3d" hidden></div>
               <div class="split-handle" id="splitH" hidden><span></span></div>
               <div class="empty-stage" id="emptyStage"><svg><use href="#i-scan"/></svg><b>Chưa có ảnh</b><span>Tải ảnh, chọn từ CSDL hoặc tạo ảnh mô phỏng ở bên trái</span><button class="btn primary" id="quickDemo"><svg><use href="#i-sparkle"/></svg>Dùng ảnh mẫu</button></div>
               <div class="loading" id="stageLoad" hidden><i></i></div>
@@ -412,5 +414,6 @@
 
 <script src="/static/charts.js"></script>
 <script src="/static/app.js"></script>
+<script type="module" src="/static/scan3d.js"></script>
 </body>
 </html>

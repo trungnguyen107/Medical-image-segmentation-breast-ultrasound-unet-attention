@@ -181,18 +181,29 @@
     } catch (e) { toast(e.message, "err"); }
   };
   let heroDone = false;
+  // chờ module 3D (script type=module nạp sau app.js)
+  function with3d(cb) { if (window.Scan3D) cb(); else window.addEventListener("scan3d-ready", cb, { once: true }); }
+  let hero3d = null;
   async function heroArt() {
     if (heroDone) return; heroDone = true;
     try {
-      const im = await api("/api/images?split=test&kind=malignant&per=1&page=3"), row = im.rows[0]; if (!row) return;
-      const f = new FormData(); f.append("image_id", row.id); f.append("model", "M4"); f.append("save", "0");
-      const r = await api("/api/segment", { method: "POST", body: f });
-      [[r.image, "#ha0"], [r.attention || r.prob, "#ha1"], [r.overlay, "#ha2"]].forEach(([src, sel], i) => {
-        const d = $(sel); d.classList.remove("skeleton"); d.style.backgroundImage = `url(${src})`; d.style.animationDelay = i * 120 + "ms"; d.classList.add("in");
-      });
-      if (r.metrics.dice !== undefined) $("#ha2c").textContent = `Kết quả · Dice ${F(r.metrics.dice, 3)}`;
+      // ưu tiên ảnh siêu âm thật (tập kiểm tra BUS-BRA) với mô hình học trên 3 bộ ảnh thật; nếu chưa có thì dùng ảnh mẫu
+      const hasMix = S.models.some((m) => m.id === "M4-MIX");
+      const tries = hasMix ? [["dataset=busbra&split=test&kind=malignant&per=1&page=7", "M4-MIX", "BUS-BRA"], ["dataset=stu&per=1&page=5", "M4-MIX", "STU"]] : [];
+      tries.push(["split=test&kind=malignant&per=1&page=3", "M4", "ảnh mô phỏng"]);
+      let r = null, src = "";
+      for (const [q, mid, name] of tries) {
+        const im = await api("/api/images?" + q).catch(() => null), row = im && im.rows[0]; if (!row) continue;
+        const f = new FormData(); f.append("image_id", row.id); f.append("model", mid); f.append("save", "0");
+        r = await api("/api/segment", { method: "POST", body: f }); src = `${name} · ${mid}`; break;
+      }
+      if (!r) return;
+      const cap = $("#hero3dCap");
+      cap.innerHTML = `${esc(src)}${r.metrics.dice !== undefined ? ` · Dice <b>${F(r.metrics.dice, 3)}</b>` : ""}`;
+      with3d(async () => { if (hero3d) hero3d.dispose(); hero3d = await Scan3D.mount($("#hero3d"), r.surface, { fallback: r.overlay }); });
     } catch { heroDone = false; }
   }
+
 
   // ================================================================== PHÂN ĐOẠN
   const cv = $("#cv"), ctx = cv.getContext("2d", { willReadFrequently: true });
@@ -333,7 +344,16 @@
     $("#splitH").hidden = L !== "split";
     if (L === "split") $("#splitH").style.left = `calc(${cvBox().left}px + ${S.split * cvBox().width}px)`;
     $("#gates").hidden = !(L === "att" && has && S.res.gates.length);
-    fitCanvas();
+    fitCanvas(); sync3d();
+  }
+  // lớp 3D: bề mặt xác suất của đúng kết quả đang xem; gỡ khi chuyển lớp khác
+  let seg3d = null, seg3dKey = null;
+  function sync3d() {
+    const want = S.layer === "3d" && S.res && S.res.surface, key = want ? S.res.surface.length + ":" + S.res.inference_ms + ":" + S.res.model : null;
+    const box = $("#stage3d"); box.hidden = !want; cv.style.visibility = want ? "hidden" : "";
+    if (key === seg3dKey) return;
+    seg3dKey = key; if (seg3d) { seg3d.dispose(); seg3d = null; }
+    if (want) with3d(async () => { const c = await Scan3D.mount(box, S.res.surface, { fallback: S.res.overlay, autoRotate: false }); if (seg3dKey === key) { seg3d = c; box.insertAdjacentHTML("beforeend", '<span class="s3d-note">Độ cao = xác suất khối u · viền hổ phách = mặt nạ dự đoán · kéo để xoay</span>'); } else c.dispose(); });
   }
   function cvBox() { const s = $("#stage").getBoundingClientRect(), c = cv.getBoundingClientRect(); return { left: c.left - s.left, width: c.width }; }
   function fitCanvas() {

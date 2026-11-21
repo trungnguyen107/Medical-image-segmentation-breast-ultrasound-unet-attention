@@ -350,7 +350,18 @@ def api_segment():
                    prob=b64png(heat(prob, norm=False)), attention=b64png(heat(np.mean(maps, 0))) if maps else None,
                    uncertainty=b64png(unc_img(img, prob)), confidence=conf,
                    gates=[b64png(heat(a)) for a in maps], gt=b64png((gt * 255).astype(np.uint8)) if gt is not None else None,
-                   metrics=met)
+                   surface=surface_png(img, prob, mask), metrics=met)
+
+
+def surface_png(img, prob, mask, side=160):
+    """Ảnh nhỏ cho chế độ xem 3D: kênh R = ảnh siêu âm, G = xác suất khối u, B = mặt nạ dự đoán."""
+    h, w = img.shape[:2]; s = side / max(h, w)
+    size = (max(2, round(w * s)), max(2, round(h * s)))
+    g = img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    r_ = cv2.resize(g, size, interpolation=cv2.INTER_AREA)
+    p_ = cv2.resize((np.clip(prob, 0, 1) * 255).astype(np.uint8), size, interpolation=cv2.INTER_AREA)
+    m_ = cv2.resize((mask > 0).astype(np.uint8) * 255, size, interpolation=cv2.INTER_NEAREST)
+    return b64png(cv2.merge([m_, p_, r_]))          # OpenCV lưu BGR → trình duyệt đọc R=ảnh, G=xác suất, B=mặt nạ
 
 
 @app.route("/api/compare", methods=["POST"])
